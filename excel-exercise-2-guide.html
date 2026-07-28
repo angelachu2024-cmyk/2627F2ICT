@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel Exercise 2 | Galaxy Stationery in March</title>
+    <style>
+        :root {
+            --ink: #18252c;
+            --muted: #5f6c70;
+            --paper: #f7f3ea;
+            --panel: #fffdf8;
+            --line: #d8d1c3;
+            --teal: #087f78;
+            --teal-dark: #075c58;
+            --coral: #e56b52;
+            --yellow: #f4c95d;
+            --green: #27845d;
+            --shadow: 0 18px 45px rgba(31, 45, 46, .11);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            line-height: 1.55;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: .45;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(8, 127, 120, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(8, 127, 120, .05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        img {
+            vertical-align: top;
+        }
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 15px clamp(18px, 5vw, 76px);
+            color: #fff;
+            background: var(--teal-dark);
+            box-shadow: 0 4px 18px rgba(7, 92, 88, .2);
+        }
+        .brand {
+            font-weight: 800;
+            letter-spacing: .08em;
+            font-size: .82rem;
+            text-transform: uppercase;
+        }
+        .progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: .88rem;
+        }
+        progress {
+            width: 150px;
+            height: 8px;
+            accent-color: var(--yellow);
+        }
+        .shell {
+            width: min(1120px, calc(100% - 36px));
+            margin: 0 auto;
+        }
+        .hero {
+            display: grid;
+            grid-template-columns: 1.15fr .85fr;
+            gap: 42px;
+            align-items: center;
+            min-height: 390px;
+            padding: 72px 0 54px;
+        }
+        .eyebrow {
+            color: var(--coral);
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+        h1,
+        h2,
+        h3 {
+            font-family: Georgia, serif;
+            line-height: 1.1;
+            margin: 0 0 15px;
+        }
+        h1 {
+            max-width: 650px;
+            font-size: clamp(2.8rem, 6vw, 5.6rem);
+            letter-spacing: -.04em;
+        }
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+        }
+        h3 {
+            font-size: 1.5rem;
+        }
+        .hero p {
+            max-width: 650px;
+            color: var(--muted);
+            font-size: 1.1rem;
+        }
+        .hero-art {
+            position: relative;
+            min-height: 260px;
+        }
+        .hero-art::before {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            right: 5%;
+            top: 4%;
+            border-radius: 50%;
+            background: var(--yellow);
+        }
+        .hero-art::after {
+            content: "";
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            left: 8%;
+            bottom: 5%;
+            border-radius: 50%;
+            background: var(--coral);
+        }
+        .sheet-mark {
+            position: absolute;
+            z-index: 1;
+            inset: 45px 7% 15px 12%;
+            padding: 20px;
+            border: 2px solid var(--ink);
+            background: var(--panel);
+            box-shadow: 12px 13px 0 var(--teal);
+            transform: rotate(-4deg);
+        }
+        .sheet-mark strong {
+            display: block;
+            margin-bottom: 13px;
+            font: 700 1.25rem Georgia, serif;
+        }
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            border-top: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+        }
+        .mini-grid span {
+            min-height: 28px;
+            padding: 5px;
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            font-size: .7rem;
+        }
+        .mini-grid span:nth-child(-n+5) {
+            background: #d9efeb;
+            font-weight: bold;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 215px 1fr;
+            gap: 42px;
+            align-items: start;
+        }
+        .toc {
+            position: sticky;
+            top: 76px;
+            padding: 20px 0;
+        }
+        .toc h3 {
+            font-size: 1rem;
+            font-family: "Trebuchet MS", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .toc a {
+            display: block;
+            padding: 8px 0 8px 13px;
+            color: var(--muted);
+            border-left: 2px solid var(--line);
+            text-decoration: none;
+            font-size: .9rem;
+        }
+        .toc a:hover,
+        .toc a:focus {
+            color: var(--teal);
+            border-left-color: var(--teal);
+        }
+        .step {
+            scroll-margin-top: 90px;
+            padding: 34px 0 54px;
+            border-top: 1px solid var(--line);
+        }
+        .step-heading {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .step-number {
+            display: grid;
+            place-items: center;
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            color: #fff;
+            background: var(--coral);
+            border-radius: 50%;
+            font-weight: 800;
+        }
+        .step-heading h2 {
+            margin-bottom: 7px;
+        }
+        .step-lead {
+            margin: 0 0 22px;
+            color: var(--muted);
+        }
+        .card {
+            padding: 23px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .88);
+            box-shadow: var(--shadow);
+        }
+        .card+.card {
+            margin-top: 18px;
+        }
+        .action-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        label.check {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+        }
+        label.check input {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            accent-color: var(--teal);
+        }
+        label.check input:checked+span {
+            color: var(--muted);
+            text-decoration: line-through;
+        }
+        code,
+        .formula {
+            font-family: Consolas, monospace;
+        }
+        code {
+            padding: 2px 6px;
+            color: var(--teal-dark);
+            background: #e1f1ed;
+            border-radius: 4px;
+        }
+        .formula {
+            display: inline-block;
+            padding: 13px 17px;
+            margin: 4px 0;
+            color: #fff;
+            background: var(--teal-dark);
+            border-radius: 5px;
+            font-size: 1.07rem;
+        }
+        .note {
+            border-left: 4px solid var(--yellow);
+            padding: 13px 16px;
+            background: #fff7d9;
+        }
+        .filename {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--coral);
+        }
+        .data-table,
+        .workbook {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table {
+            font-size: .86rem;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 8px 7px;
+            text-align: left;
+            border: 1px solid var(--line);
+        }
+        .data-table th {
+            color: #fff;
+            background: var(--teal);
+        }
+        .data-table td:nth-child(2),
+        .data-table td:nth-child(3),
+        .data-table td:nth-child(4) {
+            text-align: right;
+        }
+        .data-table td:nth-child(3) {
+            color: var(--teal-dark);
+        }
+        .workbook-wrap {
+            overflow-x: auto;
+            margin-top: 18px;
+            border: 1px solid #aeb9b5;
+            box-shadow: var(--shadow);
+        }
+        .workbook {
+            min-width: 790px;
+            table-layout: fixed;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: .78rem;
+            background: #fff;
+        }
+        .workbook th,
+        .workbook td {
+            height: 31px;
+            padding: 5px 6px;
+            border: 1px solid #c9d2cf;
+        }
+        .workbook thead th {
+            color: #586c6a;
+            background: #e8efec;
+            text-align: center;
+            font-weight: 400;
+        }
+        .workbook .corner {
+            width: 37px;
+        }
+        .workbook .rowhead {
+            width: 37px;
+            color: #586c6a;
+            background: #e8efec;
+            text-align: center;
+            font-weight: 400;
+        }
+        .workbook .title {
+            font-weight: 700;
+            text-align: center;
+            color: #163b38;
+            background: #e1f1ed;
+        }
+        .workbook .header {
+            text-align: center;
+            font-weight: 700;
+            background: #d3e8e3;
+        }
+        .workbook .currency {
+            text-align: right;
+        }
+        .workbook .percent {
+            color: var(--teal-dark);
+        }
+        .workbook .center {
+            text-align: center;
+        }
+        .workbook .formula-cell {
+            background: #fff4c9;
+            color: #8c5e00;
+        }
+        .workbook .italic {
+            font-style: italic;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 13px;
+            color: var(--muted);
+            font-size: .83rem;
+        }
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            margin-right: 5px;
+            border: 1px solid #c9d2cf;
+            vertical-align: -1px;
+        }
+        .legend .formula-key::before {
+            background: #fff4c9;
+        }
+        .legend .italic-key::before {
+            background: #e8efec;
+            font-style: italic;
+            content: "I";
+            text-align: center;
+            line-height: 11px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #586c6a;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #bbc7c3;
+            background: #f2f6f4;
+        }
+        .tool {
+            padding: 7px 10px;
+            color: #405654;
+            border: 1px solid #b8c5c1;
+            border-radius: 4px;
+            background: #fff;
+            font-size: .81rem;
+        }
+        .tool.primary {
+            color: #fff;
+            background: var(--teal);
+            border-color: var(--teal);
+        }
+        .tool.accent {
+            color: #6e5100;
+            background: #ffe9a5;
+            border-color: #e2bd4a;
+        }
+        .select-map {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(115px, 1fr));
+            gap: 10px;
+            margin: 17px 0;
+        }
+        .range {
+            padding: 14px;
+            border: 2px solid var(--teal);
+            background: #e1f1ed;
+        }
+        .range strong {
+            display: block;
+            color: var(--teal-dark);
+            font-family: Consolas, monospace;
+        }
+        .range span {
+            color: var(--muted);
+            font-size: .8rem;
+        }
+        .tip-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .tip {
+            padding: 16px;
+            background: #eef5f1;
+            border-top: 3px solid var(--teal);
+        }
+        .tip strong {
+            display: block;
+            color: var(--teal-dark);
+        }
+        .done {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            margin-top: 24px;
+            padding: 17px;
+            border-top: 1px solid var(--line);
+        }
+        .done-status {
+            color: var(--muted);
+            font-size: .87rem;
+        }
+        .step-complete {
+            border-color: var(--green) !important;
+        }
+        .next-button {
+            padding: 10px 15px;
+            border: 0;
+            color: #fff;
+            background: var(--teal);
+            border-radius: 4px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+        .next-button:hover {
+            background: var(--teal-dark);
+        }
+        .validation-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin: 14px 0;
+        }
+        .validation-card {
+            padding: 14px;
+            border: 1px solid var(--line);
+            background: #faf7f0;
+            border-radius: 4px;
+        }
+        .validation-card h4 {
+            margin: 0 0 6px;
+            font-family: Georgia, serif;
+            color: var(--teal-dark);
+        }
+        .validation-card p {
+            margin: 4px 0;
+            font-size: .88rem;
+        }
+        .validation-card code {
+            font-size: .85rem;
+        }
+        .marking {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+        .marking th,
+        .marking td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--line);
+        }
+        .marking thead th {
+            background: var(--teal);
+            color: #fff;
+        }
+        .marking tbody tr:nth-child(even) {
+            background: #faf7f0;
+        }
+        .section-block {
+            margin-top: 30px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .92);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+        .section-block h2 {
+            font-family: Georgia, serif;
+        }
+        footer {
+            margin-top: 42px;
+            padding: 28px 0 48px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            font-size: .86rem;
+            text-align: center;
+        }
+        .pager-nav {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pager-link {
+            text-decoration: none;
+            color: #fff;
+            background: var(--teal-dark);
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            border: 1px solid rgba(7, 92, 88, .3);
+            font-size: .88rem;
+        }
+        .pager-link.home {
+            background: #fff;
+            color: var(--teal-dark);
+            border-color: #b8c5c1;
+        }
+        @media (max-width: 820px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 46px;
+            }
+            .hero-art {
+                min-height: 220px;
+            }
+            .layout {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            .toc {
+                position: static;
+                display: flex;
+                overflow-x: auto;
+                gap: 15px;
+                padding: 0 0 20px;
+            }
+            .toc h3 {
+                display: none;
+            }
+            .toc a {
+                flex: 0 0 auto;
+                border-left: 0;
+                border-bottom: 2px solid var(--line);
+            }
+            .tip-grid,
+            .select-map,
+            .validation-grid {
+                grid-template-columns: 1fr;
+            }
+            .done {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+        @media (max-width: 500px) {
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 7px;
+            }
+            progress {
+                width: 115px;
+            }
+            .hero-art {
+                min-height: 195px;
+            }
+            .sheet-mark {
+                inset: 26px 2% 12px 7%;
+            }
+            .card {
+                padding: 17px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">Excel practice / Exercise 02</div>
+        <!-- <div class="progress-wrap"><span id="progressText">0 of 8 steps complete</span><progress id="progress" value="0" max="8"></progress></div> -->
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <div>
+                <div class="eyebrow">A guided worksheet build</div>
+                <h1>Excel Exercise 2</h1>
+                <p>Follow the sequence, tick each action as you complete it in Excel. This exercise extends the Galaxy Stationery sales sheet — you will insert an Item Number column, update sales quantities, delete Clips, sort alphabetically, add Notebook, and apply data validation.</p>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+                <div class="sheet-mark">
+                    <strong>GALAXY STATIONERY</strong>
+                    <div class="mini-grid"><span>Item</span><span>Cost</span><span>%</span><span>Price</span><span>Sold</span><span>Blue Pen</span><span>$2.00</span><span>50%</span><span>$3.00</span><span>102</span><span>Red Pen</span><span>$3.00</span><span>30%</span><span>$3.90</span><span>39</span></div>
+                </div>
+            </div>
+        </section>
+
+        <div class="layout">
+            <nav class="toc" aria-label="Guide steps">
+                <h3>Route</h3>
+                <a href="#step-1">01 Save</a>
+                <a href="#step-2">02 Titles &amp; Item Number</a>
+                <a href="#step-3">03 Update quantities</a>
+                <a href="#step-4">04 Delete Clips</a>
+                <a href="#step-5">05 Sort alphabetically</a>
+                <a href="#step-6">06 Add Notebook</a>
+                <a href="#step-7">07 Data Validation</a>
+                <a href="#step-8">08 Finish</a>
+                <a href="#marking-scheme">09 Marking Scheme</a>
+            </nav>
+
+            <div>
+                <!-- STEP 1 -->
+                <section class="step" id="step-1">
+                    <div class="step-heading"><span class="step-number">01</span>
+                        <div>
+                            <h2>Save As the workbook</h2>
+                            <p class="step-lead">Start with a blank workbook, then save it with the correct exercise filename.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>Open the file you submitted in previous lesson.</span></label>
+                            <label class="check"><input type="checkbox"><span>Select <strong>File &gt; Save As</strong>.</span></label>
+                            <label class="check"><input type="checkbox"><span>Choose your folder (Desktop / USB / class
+                                    folder).</span></label>
+                            <label class="check"><input type="checkbox"><span>Name the file <span
+                                        class="filename">Class_Number_Name_ex02</span>, replacing placeholders with your class, number,
+                                    and name.</span></label>
+                        </div>
+                    </div>
+                    <div class="note"><strong>Example:</strong> <code>F2X_01_YourName_ex02.xlsx</code>. Keep the suffix exactly
+                        <code>_ex02</code>.</div>
+                    <div class="done"><span class="done-status">Tick every action when complete.</span><button class="next-button"
+                            data-next="step-2">Next: titles &amp; Item Number</button></div>
+                </section>
+
+                <!-- STEP 2 -->
+                <section class="step" id="step-2">
+                    <div class="step-heading"><span class="step-number">02</span><div><h2>Titles &amp; Item Number column</h2><p class="step-lead">Italicize the titles, insert a new column before Item, and enter the Item Number values.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Update the title in <code>A2</code> (SALES IN <strong>MARCH</strong>).</span></label>
+                        <label class="check"><input type="checkbox"><span>Select <code>A1</code> and <code>A2</code>, press <strong>Ctrl+I</strong> (or <strong>Cmd+I</strong> on Mac) to italicize the titles. </span></label>
+                        <label class="check"><input type="checkbox"><span><strong>Insert a new column</strong> before column A (select column A, right-click &gt; Insert).</span></label>
+                        <label class="check"><input type="checkbox"><span>Apply <strong>Merge and center</strong> to the titles.</span></label>
+                        <label class="check"><input type="checkbox"><span>In the new <code>A4</code>, enter <strong>Item Number</strong> as the column title.</span></label>
+                        <label class="check"><input type="checkbox"><span>Select <code>B4</code>, click the <strong>Format Painter</strong> button in Home->Clipboard, then select <code>A4</code> to copy the format of <code>B4</code> to <code>A4</code><br><img src="ex02_img01.png" alt=""></span></label>
+                        <label class="check"><input type="checkbox"><span>Click <code>A5</code>, grab the fill handle (tiny green square), and drag down through <code>D12</code>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Enter the Item Number in <code>A5</code>: <strong>'001</strong></span></label>
+                        <div class="note"><strong>Type an apostrophe (') </strong> directly into the cell to force Excel to treat it as text and keep the leading zero.</div>
+                        <label class="check"><input type="checkbox"><span>Select column A, right-click &gt; <strong>Column Width</strong>, set to <strong>15</strong>.<br><img src="ex02_img04.png" alt="">  <img src="ex02_img05.png" alt=""></span></label>
+                    </div></div>
+                    <div class="done"><span class="done-status">Titles italicized and Item Number column inserted?</span><button class="next-button" data-next="step-3">Next: update quantities</button></div>
+                </section>
+
+                <!-- STEP 3 -->
+                <section class="step" id="step-3">
+                    <div class="step-heading"><span class="step-number">03</span><div><h2>Update Number of Items Sold</h2><p class="step-lead">Replace the sales quantities with the new values provided below.</p></div></div>
+                    <div class="card">
+                        <h3>New quantities</h3>
+                        <div class="workbook-wrap">
+                            <table class="workbook">
+                                <tbody>
+                                    <tr>
+                                        <td class="header">Item</td>
+                                        <td class="header">Number of Items Sold</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Blue Pen</td>
+                                        <td class="center"><strong>102</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Red Pen</td>
+                                        <td class="center"><strong>39</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Black Pen</td>
+                                        <td class="center"><strong>77</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Scissors</td>
+                                        <td class="center"><strong>46</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Glue</td>
+                                        <td class="center"><strong>15</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Clips</td>
+                                        <td class="center"><strong>47</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ruler</td>
+                                        <td class="center"><strong>68</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Eraser</td>
+                                        <td class="center"><strong>30</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Update <code>F5</code> (Blue Pen) to <strong>102</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F6</code> (Red Pen) to <strong>39</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F7</code> (Black Pen) to <strong>77</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F8</code> (Scissors) to <strong>46</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F9</code> (Glue) to <strong>15</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F10</code> (Clips) to <strong>47</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F11</code> (Ruler) to <strong>68</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Update <code>F12</code> (Eraser) to <strong>30</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Check that the <strong>Total Profit/Loss</strong> column (G) automatically recalculates.</span></label>
+                    </div></div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Formulas should update</strong><span>Total Profit/Loss = Profit/Loss × Number of Items Sold. If you copied formulas from Exercise 1, they will auto-recalculate.</span></div>
+                        <div class="tip"><strong>Quick check</strong><span>Blue Pen total should be <code>$102.00</code> (1.00 × 102). Red Pen total should be <code>$35.10</code> (0.90 × 39).</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">All quantities updated and totals recalculated?</span><button class="next-button" data-next="step-4">Next: delete Clips</button></div>
+                </section>
+
+                <!-- STEP 4 -->
+                <section class="step" id="step-4">
+                    <div class="step-heading"><span class="step-number">04</span><div><h2>Delete the row containing Clips</h2><p class="step-lead">Remove the entire row for Clips — all data in that row will be eliminated.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Click the row number for the Clips row (row <strong>10</strong> in the current layout).<br><img src="ex02_img06.png" alt=""></span></label>
+                        <label class="check"><input type="checkbox"><span>Right-click the selected row number and choose <strong>Delete</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Observe that rows below shift up to fill the gap.</span></label>
+                        <label class="check"><input type="checkbox"><span>Verify that formulas in the remaining rows still reference the correct cells.</span></label>
+                    </div></div>
+                    <div class="note"><strong>Warning:</strong> Deleting a row removes all data permanently. Ensure you have selected the correct row before deleting.</div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Row count</strong><span>After deletion, you should have 7 items (Blue Pen, Red Pen, Black Pen, Scissors, Glue, Ruler, Eraser).</span></div>
+                        <div class="tip"><strong>Formula check</strong><span>Excel automatically adjusts row references. For example, if a formula referenced <code>F10</code>, it now references <code>F9</code>.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Clips row deleted and formulas still correct?</span><button class="next-button" data-next="step-5">Next: sort alphabetically</button></div>
+                </section>
+
+                <!-- STEP 5 -->
+                <section class="step" id="step-5">
+                    <div class="step-heading"><span class="step-number">05</span><div><h2>Sort the Item column alphabetically</h2><p class="step-lead">Move rows wherever necessary to make sure that the contents in the column Item are arranged alphabetically. Use any technique you know, e.g. cut and insert, sort.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Verify that the rows are now in alphabetical order: Black Pen, Blue Pen, Eraser, Glue, Red Pen, Ruler, Scissors.<br><img src="ex02_img07.png" alt=""></span></label>
+                    </div></div>
+                    <div class="note"><strong>Tip:</strong> Moves entire rows together, so all data for each item stays intact. Check that the Item Number column moves with the items.</div>
+                    <div class="done"><span class="done-status">Items sorted alphabetically?</span><button class="next-button" data-next="step-6">Next: add Notebook</button></div>
+                </section>
+
+                <!-- STEP 6 -->
+                <section class="step" id="step-6">
+                    <div class="step-heading"><span class="step-number">06</span><div><h2>Insert a row for Notebook</h2><p class="step-lead">Add Notebook in the correct alphabetical position, enter its data, and compute the missing values.</p></div></div>
+                    <div class="card">
+                        <h3>Notebook data</h3>
+                        <div class="validation-grid">
+                            <div class="validation-card"><h4>Item Number</h4><p><code>009</code></p></div>
+                            <div class="validation-card"><h4>Cost Price</h4><p><code>13.00</code></p></div>
+                            <div class="validation-card"><h4>Profit/Loss Percent</h4><p><code>80%</code></p></div>
+                            <div class="validation-card"><h4>Number of Items Sold</h4><p><code>50</code></p></div>
+                        </div>
+                        <p style="color:var(--muted);font-size:.9rem;">Alphabetical position: between <strong>Glue</strong> and <strong>Red Pen</strong>.<br><img src="ex02_img08.png" alt=""></p>
+                    </div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Formula reuse</strong><span>If you drag formulas from adjacent rows, Excel will adjust references automatically. Check that the formulas for Notebook use the correct row.</span></div>
+                        <div class="tip"><strong>Check your work</strong><span>Notebook's Selling Price should be <code>$23.40</code> and Total Profit/Loss <code>$520.00</code>.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Notebook inserted and all formulas computed?</span><button class="next-button" data-next="step-7">Next: Data Validation</button></div>
+                </section>
+
+                <!-- STEP 7 -->
+                <section class="step" id="step-7">
+                    <div class="step-heading"><span class="step-number">07</span><div><h2>Set Data Validation</h2><p class="step-lead">Restrict the type of data that can be entered in Cost Price, Selling Price, and Number of Items Sold.</p></div></div>
+                    <div class="card">
+                        <h3>Validation rules</h3>
+                        <div class="validation-grid">
+                            <div class="validation-card"><h4>Cost Price</h4><p><strong>Decimal</strong> &gt; 0</p><p><code>Data → Data Validation → Decimal &gt; 0</code></p></div>
+                            <div class="validation-card"><h4>Selling Price</h4><p><strong>Decimal</strong> &gt; 0</p><p><code>Data → Data Validation → Decimal &gt; 0</code></p></div>
+                            <div class="validation-card"><h4>Number of Items Sold</h4><p><strong>Whole number</strong> ≥ 0</p><p><code>Data → Data Validation → Whole number ≥ 0</code></p></div>
+                        </div>
+                    </div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Select the <strong>Cost Price</strong> column (all data cells, e.g., <code>C5:C11</code>).</span></label>
+                        <label class="check"><input type="checkbox"><span>Go to <strong>Data</strong> tab &gt; <strong>Data Validation</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Under <strong>Allow</strong>, choose <strong>Decimal</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Under <strong>Data</strong>, choose <strong>greater than</strong> and enter <strong>0</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Click <strong>OK</strong>.<br><img src="ex02_img09.png" alt=""><br><br><img src="ex02_img10.png" alt=""></span></label>
+                        <label class="check"><input type="checkbox"><span>Repeat for the <strong>Selling Price</strong> column: select cells, Data Validation, Decimal &gt; 0.</span></label>
+                        <label class="check"><input type="checkbox"><span>Select the <strong>Number of Items Sold</strong> column (data cells).</span></label>
+                        <label class="check"><input type="checkbox"><span>Data Validation → Allow <strong>Whole number</strong> → Data <strong>greater than or equal to</strong> → enter <strong>0</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Test each column by entering an invalid value (e.g., -1 for Cost Price) — Excel should show an error alert.</span></label>
+                    </div></div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Why validation?</strong><span>It prevents users from entering negative prices or fractional item counts, keeping data clean.</span></div>
+                        <div class="tip"><strong>Custom message</strong><span>In the Data Validation dialog, go to the <strong>Input Message</strong> tab to add a prompt that appears when the cell is selected.</span></div>
+                    </div>
+                    <div class="note"><strong>Remember:</strong> Data Validation does not affect existing data — it only restricts new entries. If you already have valid data, no change is needed.</div>
+                    <div class="done"><span class="done-status">Data Validation set for all three columns?</span><button class="next-button" data-next="step-8">Next: finish &amp; save</button></div>
+                </section>
+
+                <!-- STEP 8 -->
+                <section class="step" id="step-8">
+                    <div class="step-heading"><span class="step-number">08</span><div><h2>Finish and save the worksheet</h2><p class="step-lead">Make sure the formulas are correctly entered before altering the number of items sold.</p></div></div>
+                    <div class="card">
+                        <h3>Final worksheet (completed)</h3>
+                        <img src="ex02_img03.png" alt="">
+                    </div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Verify all formulas in <strong>Profit/Loss</strong>, <strong>Selling Price</strong>, and <strong>Total Profit/Loss</strong> are correct.</span></label>
+                        <label class="check"><input type="checkbox"><span>Check that titles are <strong>italicized</strong> and <strong>merged &amp; centered</strong> across columns A–H.</span></label>
+                        <label class="check"><input type="checkbox"><span>Confirm that <strong>Item Number</strong> values are labels (aligned left, not used in formulas).</span></label>
+                        <label class="check"><input type="checkbox"><span>Ensure column A width is <strong>15</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Data Validation is active on Cost Price, Selling Price, and Number of Items Sold.</span></label>
+                        <label class="check"><input type="checkbox"><span>Save the file (<strong>Ctrl+S</strong> / <strong>Cmd+S</strong>).</span></label>
+                    </div></div>
+                    <div class="note"><strong>Final check:</strong> Compare your worksheet with the final table above. All numbers, formulas, and formatting should match. Then submit your file.</div>
+                    <div class="done"><span class="done-status">All tasks complete! Save once more and submit.</span><button class="next-button" data-next="top">Back to top</button></div>
+                </section>
+
+                <section class="section-block" id="marking-scheme">
+                    <h2>📋 Marking Scheme</h2>
+                    <table class="marking">
+                        <thead><tr><th>Criterion</th><th>Weight</th></tr></thead>
+                        <tbody>
+                            <tr><td>Copy and rename worksheets</td><td>10%</td></tr>
+                            <tr><td>"March" and italicise titles</td><td>10%</td></tr>
+                            <tr><td>Item Number (001, 002, …)</td><td>10%</td></tr>
+                            <tr><td>Column width 15</td><td>10%</td></tr>
+                            <tr><td>Edit Number of Items sold</td><td>10%</td></tr>
+                            <tr><td>Delete the row Clips</td><td>10%</td></tr>
+                            <tr><td>Arranged alphabetically</td><td>10%</td></tr>
+                            <tr><td>Add the row Notebook and enter data</td><td>10%</td></tr>
+                            <tr><td>Data validation</td><td>15%</td></tr>
+                            <tr><td>Other mistakes</td><td>5%</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <footer>&copy; 2026-2027 F2 ICT T1</footer>
+            </div>
+        </div>
+
+        <nav class="pager-nav" aria-label="Page navigation">
+            <a class="pager-link" href="excel-exercise-1-guide.html">Previous: Exercise 01</a>
+            <a class="pager-link home" href="index.html">Index</a>
+            <a class="pager-link" href="excel-exercise-3-guide.html">Next: Exercise 03</a>
+        </nav>
+    </main>
+
+    <script>
+        const steps = [...document.querySelectorAll('.step')];
+        const checks = [...document.querySelectorAll('input[type="checkbox"]')];
+        const progress = document.querySelector('#progress');
+        const progressText = document.querySelector('#progressText');
+
+        function updateProgress() {
+            const complete = steps.filter(step => [...step.querySelectorAll('input[type="checkbox"]')].every(input => input.checked)).length;
+            progress.value = complete;
+            progressText.textContent = `${complete} of ${steps.length} steps complete`;
+            steps.forEach(step => step.classList.toggle('step-complete', [...step.querySelectorAll('input[type="checkbox"]')].length > 0 && [...step.querySelectorAll('input[type="checkbox"]')].every(input => input.checked)));
+            localStorage.setItem('excelGuideChecks_ex02', JSON.stringify(checks.map(input => input.checked)));
+        }
+
+        const saved = JSON.parse(localStorage.getItem('excelGuideChecks_ex02') || '[]');
+        checks.forEach((input, index) => { input.checked = saved[index] === true; input.addEventListener('change', updateProgress); });
+        updateProgress();
+
+        document.querySelectorAll('.next-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const target = button.dataset.next === 'top' ? document.querySelector('.topbar') : document.querySelector(`#${button.dataset.next}`);
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
