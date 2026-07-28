@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel Exercise 4 | IF Function and Conditional Formatting</title>
+    <style>
+        :root {
+            --ink: #18252c;
+            --muted: #5f6c70;
+            --paper: #f7f3ea;
+            --panel: #fffdf8;
+            --line: #d8d1c3;
+            --teal: #087f78;
+            --teal-dark: #075c58;
+            --coral: #e56b52;
+            --yellow: #f4c95d;
+            --green: #27845d;
+            --shadow: 0 18px 45px rgba(31, 45, 46, .11);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            line-height: 1.55;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: .45;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(8, 127, 120, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(8, 127, 120, .05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 15px clamp(18px, 5vw, 76px);
+            color: #fff;
+            background: var(--teal-dark);
+            box-shadow: 0 4px 18px rgba(7, 92, 88, .2);
+        }
+        .brand {
+            font-weight: 800;
+            letter-spacing: .08em;
+            font-size: .82rem;
+            text-transform: uppercase;
+        }
+        .progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: .88rem;
+        }
+        progress {
+            width: 150px;
+            height: 8px;
+            accent-color: var(--yellow);
+        }
+        .shell {
+            width: min(1120px, calc(100% - 36px));
+            margin: 0 auto;
+        }
+        .hero {
+            display: grid;
+            grid-template-columns: 1.15fr .85fr;
+            gap: 42px;
+            align-items: center;
+            min-height: 390px;
+            padding: 72px 0 54px;
+        }
+        .eyebrow {
+            color: var(--coral);
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+        h1,
+        h2,
+        h3 {
+            font-family: Georgia, serif;
+            line-height: 1.1;
+            margin: 0 0 15px;
+        }
+        h1 {
+            max-width: 650px;
+            font-size: clamp(2.8rem, 6vw, 5.6rem);
+            letter-spacing: -.04em;
+        }
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+        }
+        h3 {
+            font-size: 1.5rem;
+        }
+        .hero p {
+            max-width: 650px;
+            color: var(--muted);
+            font-size: 1.1rem;
+        }
+        .hero-art {
+            position: relative;
+            min-height: 260px;
+        }
+        .hero-art::before {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            right: 5%;
+            top: 4%;
+            border-radius: 50%;
+            background: var(--yellow);
+        }
+        .hero-art::after {
+            content: "";
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            left: 8%;
+            bottom: 5%;
+            border-radius: 50%;
+            background: var(--coral);
+        }
+        .sheet-mark {
+            position: absolute;
+            z-index: 1;
+            inset: 45px 7% 15px 12%;
+            padding: 20px;
+            border: 2px solid var(--ink);
+            background: var(--panel);
+            box-shadow: 12px 13px 0 var(--teal);
+            transform: rotate(-4deg);
+        }
+        .sheet-mark strong {
+            display: block;
+            margin-bottom: 13px;
+            font: 700 1.25rem Georgia, serif;
+        }
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            border-top: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+        }
+        .mini-grid span {
+            min-height: 28px;
+            padding: 5px;
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            font-size: .7rem;
+        }
+        .mini-grid span:nth-child(-n+5) {
+            background: #d9efeb;
+            font-weight: bold;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 215px 1fr;
+            gap: 42px;
+            align-items: start;
+        }
+        .toc {
+            position: sticky;
+            top: 76px;
+            padding: 20px 0;
+        }
+        .toc h3 {
+            font-size: 1rem;
+            font-family: "Trebuchet MS", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .toc a {
+            display: block;
+            padding: 8px 0 8px 13px;
+            color: var(--muted);
+            border-left: 2px solid var(--line);
+            text-decoration: none;
+            font-size: .9rem;
+        }
+        .toc a:hover,
+        .toc a:focus {
+            color: var(--teal);
+            border-left-color: var(--teal);
+        }
+        .step {
+            scroll-margin-top: 90px;
+            padding: 34px 0 54px;
+            border-top: 1px solid var(--line);
+        }
+        .step-heading {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .step-number {
+            display: grid;
+            place-items: center;
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            color: #fff;
+            background: var(--coral);
+            border-radius: 50%;
+            font-weight: 800;
+        }
+        .step-heading h2 {
+            margin-bottom: 7px;
+        }
+        .step-lead {
+            margin: 0 0 22px;
+            color: var(--muted);
+        }
+        .card {
+            padding: 23px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .88);
+            box-shadow: var(--shadow);
+        }
+        .card+.card {
+            margin-top: 18px;
+        }
+        .action-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        label.check {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+        }
+        label.check input {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            accent-color: var(--teal);
+        }
+        label.check input:checked+span {
+            color: var(--muted);
+            text-decoration: line-through;
+        }
+        code,
+        .formula {
+            font-family: Consolas, monospace;
+        }
+        code {
+            padding: 2px 6px;
+            color: var(--teal-dark);
+            background: #e1f1ed;
+            border-radius: 4px;
+        }
+        .formula {
+            display: inline-block;
+            padding: 13px 17px;
+            margin: 4px 0;
+            color: #fff;
+            background: var(--teal-dark);
+            border-radius: 5px;
+            font-size: 1.07rem;
+        }
+        .note {
+            border-left: 4px solid var(--yellow);
+            padding: 13px 16px;
+            background: #fff7d9;
+            text-decoration: none;
+        }
+        .note a {
+            text-decoration: none;
+            color: var(--teal-dark);
+        }
+        .filename {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--coral);
+        }
+        .data-table,
+        .workbook {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table {
+            font-size: .86rem;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 8px 7px;
+            text-align: left;
+            border: 1px solid var(--line);
+        }
+        .data-table th {
+            color: #fff;
+            background: var(--teal);
+        }
+        .data-table td:nth-child(2),
+        .data-table td:nth-child(3),
+        .data-table td:nth-child(4) {
+            text-align: right;
+        }
+        .data-table td:nth-child(3) {
+            color: var(--teal-dark);
+        }
+        .workbook-wrap {
+            overflow-x: auto;
+            margin-top: 18px;
+            border: 1px solid #aeb9b5;
+            box-shadow: var(--shadow);
+        }
+        .workbook {
+            min-width: 790px;
+            table-layout: fixed;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: .78rem;
+            background: #fff;
+        }
+        .workbook th,
+        .workbook td {
+            height: 31px;
+            padding: 5px 6px;
+            border: 1px solid #c9d2cf;
+        }
+        .workbook thead th {
+            color: #586c6a;
+            background: #e8efec;
+            text-align: center;
+            font-weight: 400;
+        }
+        .workbook .corner {
+            width: 37px;
+        }
+        .workbook .rowhead {
+            width: 37px;
+            color: #586c6a;
+            background: #e8efec;
+            text-align: center;
+            font-weight: 400;
+        }
+        .workbook .title {
+            font-weight: 700;
+            text-align: center;
+            color: #163b38;
+            background: #e1f1ed;
+        }
+        .workbook .header {
+            text-align: center;
+            font-weight: 700;
+            background: #d3e8e3;
+        }
+        .workbook .currency {
+            text-align: right;
+        }
+        .workbook .percent {
+            color: var(--teal-dark);
+        }
+        .workbook .center {
+            text-align: center;
+        }
+        .workbook .formula-cell {
+            background: #fff4c9;
+            color: #8c5e00;
+        }
+        .workbook .italic {
+            font-style: italic;
+        }
+        .workbook .bold {
+            font-weight: 700;
+        }
+        .workbook .highlight {
+            background: #f9e79f;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 13px;
+            color: var(--muted);
+            font-size: .83rem;
+        }
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            margin-right: 5px;
+            border: 1px solid #c9d2cf;
+            vertical-align: -1px;
+        }
+        .legend .formula-key::before {
+            background: #fff4c9;
+        }
+        .legend .cond-format-key::before {
+            background: #f9e79f;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #bbc7c3;
+            background: #f2f6f4;
+        }
+        .tool {
+            padding: 7px 10px;
+            color: #405654;
+            border: 1px solid #b8c5c1;
+            border-radius: 4px;
+            background: #fff;
+            font-size: .81rem;
+        }
+        .tool.primary {
+            color: #fff;
+            background: var(--teal);
+            border-color: var(--teal);
+        }
+        .tool.accent {
+            color: #6e5100;
+            background: #ffe9a5;
+            border-color: #e2bd4a;
+        }
+        .select-map {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(115px, 1fr));
+            gap: 10px;
+            margin: 17px 0;
+        }
+        .range {
+            padding: 14px;
+            border: 2px solid var(--teal);
+            background: #e1f1ed;
+        }
+        .range strong {
+            display: block;
+            color: var(--teal-dark);
+            font-family: Consolas, monospace;
+        }
+        .range span {
+            color: var(--muted);
+            font-size: .8rem;
+        }
+        .tip-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .tip {
+            padding: 16px;
+            background: #eef5f1;
+            border-top: 3px solid var(--teal);
+        }
+        .tip strong {
+            display: block;
+            color: var(--teal-dark);
+        }
+        .done {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            margin-top: 24px;
+            padding: 17px;
+            border-top: 1px solid var(--line);
+        }
+        .done-status {
+            color: var(--muted);
+            font-size: .87rem;
+        }
+        .step-complete {
+            border-color: var(--green) !important;
+        }
+        .next-button {
+            padding: 10px 15px;
+            border: 0;
+            color: #fff;
+            background: var(--teal);
+            border-radius: 4px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+        .next-button:hover {
+            background: var(--teal-dark);
+        }
+        .marking {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+        .marking th,
+        .marking td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--line);
+        }
+        .marking thead th {
+            background: var(--teal);
+            color: #fff;
+        }
+        .marking tbody tr:nth-child(even) {
+            background: #faf7f0;
+        }
+        .section-block {
+            margin-top: 30px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .92);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+        .section-block h2 {
+            font-family: Georgia, serif;
+        }
+        footer {
+            margin-top: 42px;
+            padding: 28px 0 48px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            font-size: .86rem;
+            text-align: center;
+        }
+        .pager-nav {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pager-link {
+            text-decoration: none;
+            color: #fff;
+            background: var(--teal-dark);
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            border: 1px solid rgba(7, 92, 88, .3);
+            font-size: .88rem;
+        }
+        .pager-link.home {
+            background: #fff;
+            color: var(--teal-dark);
+            border-color: #b8c5c1;
+        }
+        @media (max-width: 820px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 46px;
+            }
+            .hero-art {
+                min-height: 220px;
+            }
+            .layout {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            .toc {
+                position: static;
+                display: flex;
+                overflow-x: auto;
+                gap: 15px;
+                padding: 0 0 20px;
+            }
+            .toc h3 {
+                display: none;
+            }
+            .toc a {
+                flex: 0 0 auto;
+                border-left: 0;
+                border-bottom: 2px solid var(--line);
+            }
+            .tip-grid,
+            .select-map {
+                grid-template-columns: 1fr;
+            }
+            .done {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+        @media (max-width: 500px) {
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 7px;
+            }
+            progress {
+                width: 115px;
+            }
+            .hero-art {
+                min-height: 195px;
+            }
+            .sheet-mark {
+                inset: 26px 2% 12px 7%;
+            }
+            .card {
+                padding: 17px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">Excel practice / Exercise 04</div>
+        <div class="progress-wrap"><span id="progressText">0 of 8 steps complete</span><progress id="progress" value="0" max="8"></progress></div>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <div>
+                <div class="eyebrow">A guided worksheet build</div>
+                <h1>Excel Exercise 4</h1>
+                <p>Follow the sequence, tick each action as you complete it in Excel. This exercise introduces IF functions and conditional formatting — you will calculate class statistics, assign PASS/FAIL, determine credits granted, and highlight high scores.</p>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+                <div class="sheet-mark">
+                    <strong>GRADE WORKSHEET</strong>
+                    <div class="mini-grid"><span>Name</span><span>Exam1</span><span>Exam2</span><span>Exam3</span><span>Avg</span><span>Student1</span><span>82</span><span>75</span><span>81</span><span>79.3</span><span>Student2</span><span>60</span><span>58</span><span>66</span><span>61.3</span></div>
+                    <div style="margin-top:6px;font-size:.7rem;color:var(--muted);">IF → PASS / FAIL &amp; Credits</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="layout">
+            <nav class="toc" aria-label="Guide steps">
+                <h3>Route</h3>
+                <a href="#step-1">01 Save &amp; Rename</a>
+                <a href="#step-2">02 Create sheet &amp; data</a>
+                <a href="#step-3">03 Statistics</a>
+                <a href="#step-4">04 IF: Final Grade</a>
+                <a href="#step-5">05 IF: Credits Granted</a>
+                <a href="#step-6">06 Conditional Formatting</a>
+                <a href="#step-7">07 Finish</a>
+                <a href="#marking-scheme">08 Marking Scheme</a>
+            </nav>
+
+            <div>
+                <!-- STEP 1 -->
+                <section class="step" id="step-1">
+                    <div class="step-heading"><span class="step-number">01</span><div><h2>Save As with correct name</h2><p class="step-lead">Start from your previous file (Exercise 3) or a new workbook, and save with the new exercise number.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Create a new Excel file and rename the sheet as <strong>Exercise 4</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Select <strong>File &gt; Save As</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Choose your folder and name the file <span class="filename">Class_Number_Name_ex04</span>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Ensure the suffix is exactly <code>_ex04</code>.</span></label>
+                    </div></div>
+                    <div class="note"><strong>Example:</strong> <code>F2X_01_YourName_ex04.xlsx</code>.</div>
+                    <div class="done"><span class="done-status">File saved with correct name?</span><button class="next-button" data-next="step-2">Next: create sheet &amp; data</button></div>
+                </section>
+
+                <!-- STEP 2 -->
+                <section class="step" id="step-2">
+                    <div class="step-heading"><span class="step-number">02</span><div><h2>Enter student data</h2><p class="step-lead">Type the Grade data exactly as shown.</p></div></div>
+                    <div class="card">
+                        <h3>Student data</h3>
+                        <div class="workbook-wrap">
+                            <table class="workbook">
+                                <thead>
+                                  <tr>
+                                    <th colspan="5" style="background-color: #f2f2f2;">2022 F2A Mathematics</th>
+                                  </tr>
+                                  <tr style="background-color: #e0e0e0;">
+                                    <th>Number</th>
+                                    <th>Name</th>
+                                    <th>Final Average</th>
+                                    <th>Final Grade</th>
+                                    <th>Credits Granted</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr><td>1</td><td>Alice</td><td>84.00</td><td></td><td></td></tr>
+                                  <tr><td>2</td><td>Bertha</td><td>39.30</td><td></td><td></td></tr>
+                                  <tr><td>3</td><td>Cathy</td><td>59.00</td><td></td><td></td></tr>
+                                  <tr><td>4</td><td>Daisy</td><td>99.00</td><td></td><td></td></tr>
+                                  <tr><td>5</td><td>Elaine</td><td>50.70</td><td></td><td></td></tr>
+                                  <tr><td>6</td><td>Fanny</td><td>48.80</td><td></td><td></td></tr>
+                                  <tr><td>7</td><td>Ginna</td><td>59.90</td><td></td><td></td></tr>
+                                  <tr><td>8</td><td>Helen</td><td>70.00</td><td></td><td></td></tr>
+                                  <tr><td>9</td><td>Iris</td><td>69.00</td><td></td><td></td></tr>
+                                  <tr><td>10</td><td>Jane</td><td>91.00</td><td></td><td></td></tr>
+                                  <tr><td>11</td><td>Kelly</td><td>60.00</td><td></td><td></td></tr>
+                                  <tr><td>12</td><td>Lily</td><td>68.00</td><td></td><td></td></tr>
+                                  <tr><td>13</td><td>Minnie</td><td>72.60</td><td></td><td></td></tr>
+                                  <tr><td>14</td><td>Nicole</td><td>50.10</td><td></td><td></td></tr>
+                                  <tr><td>15</td><td>Olivia</td><td>60.10</td><td></td><td></td></tr>
+                                </tbody>
+                                <tfoot>
+                                  <tr style="background-color: #e0e0e0;">
+                                    <td colspan="2"><b>Class Average</b></td>
+                                    <td></td>
+                                    <td colspan="2" style="background-color: #ffffff;"></td>
+                                  </tr>
+                                  <tr style="background-color: #e0e0e0;">
+                                    <td colspan="2"><b>Highest Score</b></td>
+                                    <td></td>
+                                    <td colspan="2" style="background-color: #ffffff;"></td>
+                                  </tr>
+                                  <tr style="background-color: #e0e0e0;">
+                                    <td colspan="2"><b>Lowest Score</b></td>
+                                    <td></td>
+                                    <td colspan="2" style="background-color: #ffffff;"></td>
+                                  </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Type the following data, add borders, set alignments and any other formattings.<br><div class="note">💡 <a target="_blank" href="excel-exercise-3-guide.html#step-2">Click here to return to the previous exercise for further guidance.</a></div><br><img src="ex04_img01.png" alt=""></span></label>
+                    </div></div>
+                    <div class="done"><span class="done-status">Data entered correctly?</span><button class="next-button" data-next="step-3">Next: borders &amp; formatting</button></div>
+                </section>
+
+                <!-- STEP 3 -->
+                <section class="step" id="step-3">
+                    <div class="step-heading"><span class="step-number">03</span><div><h2>Calculate Class Average, Highest, and Lowest</h2><p class="step-lead">We need the final average for each student first, then the class statistics.</p></div></div>
+                    <div class="card">
+                        <h3>Steps</h3>
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>In <code>D19</code>, enter or generate the <strong>AVERAGE</strong> formula to get the class average.<br><div class="note">💡 <a target="_blank" href="excel-exercise-3-guide.html#step-4">Click here to return to the previous exercise for further guidance.</a></div></span></label>
+                            <label class="check"><input type="checkbox"><span>In <code>D20</code>, enter or generate the appropriate formula to get the <strong>Highest Score.</strong></span></label>
+                            <label class="check"><input type="checkbox"><span>In <code>D21</code>, enter or generate the appropriate formula to get the <strong>Lowest Score.</strong></span></label>
+                            <label class="check"><input type="checkbox"><span>Format all number cells (<code>D4:D21</code>) to 2 decimal places.<br><div class="note">💡 <a target="_blank" href="excel-exercise-1-guide.html#step-6">Click here to return to the previous exercise for further guidance.</a></div><br><img src="ex04_img02.png" alt=""></span></label>
+                        </div>
+                    </div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>AVERAGE</strong><span>Remember: <code>=AVERAGE(range)</code> calculates the mean.</span></div>
+                        <div class="tip"><strong>Absolute reference later</strong><span>When we use IF for credits, we'll need to refer to the class average cell (B12) with an absolute reference (<code>$B$12</code>).</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Statistics calculated?</span><button class="next-button" data-next="step-5">Next: IF for Final Grade</button></div>
+                </section>
+
+                <!-- STEP 4 -->
+                <section class="step" id="step-4">
+                    <div class="step-heading"><span class="step-number">04</span><div><h2>Use IF to display PASS / FAIL</h2><p class="step-lead">Enter an IF statement for the first student in the column “Final Grade” that will produce the word PASS
+if the final average is greater than or equal to 60.00, and FAIL if it is not</p></div></div>
+                    <div class="card">
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>In <code>E4</code>, enter the <code>IF</code> formula, or click the <strong>fx</strong> button and select the <code>IF</code> function, set
+                              <br><div class="note">💡 <a target="_blank" href="excel-exercise-3-guide.html#step-6">Click here to return to the previous exercise for further guidance.</a></div> 
+                              <ul>
+                                <li><strong>Logical_test</strong> to <code onmousedown='return false;' onselectstart='return false;'>D4>=60</code></li>
+                                <li><strong>Value_if_true</strong> to <code>PASS</code></li>
+                                <li><strong>Value_if_false</strong> to <code>FAIL</code></li>
+                              </ul>
+                            <img src="ex04_img03.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>Drag the formula down from <code>E4</code> to <code>E18</code> and select <strong>Fill Without Formatting</strong>.<br><img src="ex04_img04.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>Check that students with avg ≥ 60 show PASS, others FAIL.</span></label>
+                        </div>
+                    </div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>IF syntax</strong><span><code onmousedown='return false;' onselectstart='return false;'>=IF(logical_test, value_if_true, value_if_false)</code></span></div>
+                        <div class="tip"><strong>Text must be in quotes</strong><span>Always enclose text strings like "PASS" in double quotation marks.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">IF formula for Final Grade working?</span><button class="next-button" data-next="step-6">Next: IF for Credits</button></div>
+                </section>
+
+                <!-- STEP 5 -->
+                <section class="step" id="step-5">
+                    <div class="step-heading"><span class="step-number">05</span><div><h2>Use IF to determine Credits Granted</h2><p class="step-lead">Enter an IF statement for the first student in the column “Credits Granted” that will produce 3 if the
+final average is greater than or equal to the class average, and 0 if it is not.</p></div></div>
+                    <div class="card">
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>In <code>F4</code>, enter or generate the appropriate <code>IF</code> formula, set.
+                            <ul>
+                                <li><strong>Logical_test</strong> to final average <code>D4</code> is greater than or equal to the class average <code>D19</code></li>
+                                <li><strong>Value_if_true</strong> to <code>3</code></li>
+                                <li><strong>Value_if_false</strong> to <code>0</code></li>
+                              </ul>
+                            </span></label>
+                            <label class="check"><input type="checkbox"><span>Drag the formula down to <code>F18</code> and select <strong>Fill Without Formatting.</strong> </span></label>
+                            <label class="check"><input type="checkbox"><span>Ensure the reference to the class average is <strong>absolute</strong> (<code onmousedown='return false;' onselectstart='return false;'>$D$19</code>) so it doesn't change when copied.</span></label>
+                        </div>
+                    </div>
+                    <div class="note"><strong>Why absolute reference?</strong> Without the dollar signs, the reference would shift to B13, B14, etc., giving wrong results. <code>$B$12</code> locks the row and column.</div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Check results</strong><span>Students with avg above the class average should get 3 credits, others 0.</span></div>
+                        <div class="tip"><strong>Quick absolute</strong><span>Press <strong>F4</strong> while editing the cell reference to toggle absolute/relative.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Credits formula working correctly?</span><button class="next-button" data-next="step-7">Next: Conditional Formatting</button></div>
+                </section>
+
+                <!-- STEP 6 -->
+                <section class="step" id="step-6">
+                    <div class="step-heading"><span class="step-number">06</span><div><h2>Apply Conditional Formatting to Final Average</h2><p class="step-lead">Use the Conditional Formatting to highlight the data in the column “Final Average” with a value
+greater than 80.00.</p></div></div>
+                    <div class="card">
+                        <h3>Steps</h3>
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>Select the range <code>D4:D18</code> (Final Avg values).</span></label>
+                            <label class="check"><input type="checkbox"><span>Go to <strong>Home &gt; Conditional Formatting &gt; Highlight Cells Rules &gt; Greater Than</strong>.<br><img src="ex04_img05.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>In the dialog, enter <strong>80</strong> and choose a formatting style (e.g., <strong>Light Red Fill with Dark Red Text</strong> or any distinct style).<br><img src="ex04_img06.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>Verify that cells with values > 80 are highlighted.</span></label>
+                        </div>
+                    </div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Multiple rules</strong><span>You can add more rules for other thresholds (e.g., < 60) if desired.</span></div>
+                        <div class="tip"><strong>Clear formatting</strong><span>To remove, go to Conditional Formatting &gt; Clear Rules.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Conditional Formatting applied?</span><button class="next-button" data-next="step-8">Next: finish & save</button></div>
+                </section>
+
+                <!-- STEP 7 -->
+                <section class="step" id="step-7">
+                    <div class="step-heading"><span class="step-number">07</span><div><h2>Final review and save</h2><p class="step-lead">Check all formulas and formatting, then save the file.</p></div></div>
+                    <div class="card">
+                        <h3>Final worksheet preview</h3>
+                        <img src="ex04_img07.png" alt=""></img>
+                        <div class="legend"><span class="formula-key">Final Avg is formula result</span><span class="cond-format-key">highlighted if > 80</span><span>IF formulas for PASS/FAIL and Credits</span></div>
+                    </div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Verify that all formulas produce the expected results (compare with the preview).</span></label>
+                        <label class="check"><input type="checkbox"><span>Check borders, alignment, and formatting.</span></label>
+                        <label class="check"><input type="checkbox"><span>Confirm Conditional Formatting highlights values > 80.</span></label>
+                        <label class="check"><input type="checkbox"><span>Save the file (<strong>Ctrl+S</strong> / <strong>Cmd+S</strong>).</span></label>
+                    </div></div>
+                    <div class="done"><span class="done-status">All tasks complete! Save and submit.</span><button class="next-button" data-next="top">Back to top</button></div>
+                </section>
+
+                <!-- MARKING SCHEME -->
+                <section class="section-block" id="marking-scheme">
+                    <h2>📋 Marking Scheme</h2>
+                    <table class="marking">
+                        <thead><tr><th>Criterion</th><th>Weight</th></tr></thead>
+                        <tbody>
+                            <tr><td>Correct file name and new spreadsheet</td><td>5%</td></tr>
+                            <tr><td>Typing mistakes (data entry)</td><td>20% (5% each)</td></tr>
+                            <tr><td>Border</td><td>10%</td></tr>
+                            <tr><td>IF function for Final Grade</td><td>15%</td></tr>
+                            <tr><td>IF function for Credits Granted</td><td>15%</td></tr>
+                            <tr><td>Class Average</td><td>5%</td></tr>
+                            <tr><td>Highest Score</td><td>5%</td></tr>
+                            <tr><td>Lowest Score</td><td>5%</td></tr>
+                            <tr><td>Conditional Formatting</td><td>10%</td></tr>
+                            <tr><td>Center and format all new entries</td><td>5%</td></tr>
+                            <tr><td>Other mistakes</td><td>5%</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <footer>&copy; 2026-2027 F2 ICT T1</footer>
+            </div>
+        </div>
+
+        <nav class="pager-nav" aria-label="Page navigation">
+            <a class="pager-link" href="excel-exercise-3-guide.html">Previous: Exercise 03</a>
+            <a class="pager-link home" href="index.html">Index</a>
+            <a class="pager-link" href="excel-exercise-5-guide.html">Next: Exercise 05</a>
+        </nav>
+    </main>
+
+    <script>
+        const steps = [...document.querySelectorAll('.step')];
+        const checks = [...document.querySelectorAll('input[type="checkbox"]')];
+        const progress = document.querySelector('#progress');
+        const progressText = document.querySelector('#progressText');
+
+        function updateProgress() {
+            const complete = steps.filter(step => [...step.querySelectorAll('input[type="checkbox"]')].every(input => input.checked)).length;
+            progress.value = complete;
+            progressText.textContent = `${complete} of ${steps.length} steps complete`;
+            steps.forEach(step => step.classList.toggle('step-complete', [...step.querySelectorAll('input[type="checkbox"]')].length > 0 && [...step.querySelectorAll('input[type="checkbox"]')].every(input => input.checked)));
+            localStorage.setItem('excelGuideChecks_ex04', JSON.stringify(checks.map(input => input.checked)));
+        }
+
+        const saved = JSON.parse(localStorage.getItem('excelGuideChecks_ex04') || '[]');
+        checks.forEach((input, index) => { input.checked = saved[index] === true; input.addEventListener('change', updateProgress); });
+        updateProgress();
+
+        document.querySelectorAll('.next-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const target = button.dataset.next === 'top' ? document.querySelector('.topbar') : document.querySelector(`#${button.dataset.next}`);
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
