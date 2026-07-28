@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Excel Course Index</title>
+  <style>
+    :root {
+      --ink: #18252c;
+      --muted: #5f6c70;
+      --paper: #f7f3ea;
+      --panel: #fffdf8;
+      --line: #d8d1c3;
+      --teal: #087f78;
+      --teal-dark: #075c58;
+      --coral: #e56b52;
+      --yellow: #f4c95d;
+      --green: #27845d;
+      --shadow: 0 18px 45px rgba(31, 45, 46, .11);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: .45;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(8,127,120,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(8,127,120,.05) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 15px clamp(18px, 5vw, 76px);
+      color: #fff;
+      background: var(--teal-dark);
+      box-shadow: 0 4px 18px rgba(7, 92, 88, .2);
+    }
+
+    .brand {
+      font-weight: 800;
+      letter-spacing: .08em;
+      font-size: .82rem;
+      text-transform: uppercase;
+    }
+
+    .count-pill {
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.35);
+      font-size: .8rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .shell {
+      width: min(1160px, calc(100% - 36px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 42px;
+      align-items: center;
+      min-height: 360px;
+      padding: 68px 0 48px;
+    }
+
+    .eyebrow {
+      color: var(--coral);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      font-family: Georgia, serif;
+      line-height: 1.1;
+      margin: 0 0 14px;
+    }
+
+    h1 {
+      max-width: 680px;
+      font-size: clamp(2.6rem, 6vw, 5.2rem);
+      letter-spacing: -.04em;
+    }
+
+    h2 {
+      font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+    }
+
+    p.lead {
+      max-width: 650px;
+      color: var(--muted);
+      font-size: 1.07rem;
+      margin: 0;
+    }
+
+    .hero-art {
+      position: relative;
+      min-height: 240px;
+    }
+
+    .hero-art::before {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      right: 5%;
+      top: 3%;
+      border-radius: 50%;
+      background: var(--yellow);
+    }
+
+    .hero-art::after {
+      content: "";
+      position: absolute;
+      width: 128px;
+      height: 128px;
+      left: 8%;
+      bottom: 7%;
+      border-radius: 50%;
+      background: var(--coral);
+    }
+
+    .card-mark {
+      position: absolute;
+      z-index: 1;
+      inset: 34px 7% 16px 11%;
+      padding: 18px;
+      border: 2px solid var(--ink);
+      background: var(--panel);
+      box-shadow: 12px 13px 0 var(--teal);
+      transform: rotate(-4deg);
+    }
+
+    .card-mark strong {
+      display: block;
+      margin-bottom: 12px;
+      font: 700 1.16rem Georgia, serif;
+    }
+
+    .mini-bars {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-bars span {
+      display: block;
+      height: 8px;
+      border-radius: 999px;
+      background: #d9efeb;
+    }
+
+    .mini-bars span:nth-child(1) { width: 95%; }
+    .mini-bars span:nth-child(2) { width: 86%; }
+    .mini-bars span:nth-child(3) { width: 70%; }
+    .mini-bars span:nth-child(4) { width: 80%; }
+
+    .section {
+      margin-bottom: 36px;
+      padding: 26px;
+      border: 1px solid var(--line);
+      background: rgba(255,253,248,.9);
+      box-shadow: var(--shadow);
+      scroll-margin-top: 86px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .link-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 14px;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .link-card:hover,
+    .link-card:focus {
+      transform: translateY(-2px);
+      border-color: var(--teal);
+      box-shadow: 0 8px 22px rgba(8,127,120,.15);
+      outline: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .title-wrap {
+      min-width: 0;
+    }
+
+    .title-wrap strong {
+      display: block;
+      font-size: 1rem;
+      line-height: 1.3;
+    }
+
+    .title-wrap small {
+      display: block;
+      color: var(--muted);
+      font-size: .8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .03em;
+      border: 1px solid;
+      text-transform: uppercase;
+    }
+
+    .ready {
+      color: #0c5c3d;
+      background: #def7ea;
+      border-color: #9bd7b8;
+    }
+
+    .todo {
+      color: #8d6320;
+      background: #fff3d6;
+      border-color: #f0cd89;
+    }
+
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 16px;
+    }
+
+    .quick-links a {
+      text-decoration: none;
+      border: 1px solid var(--line);
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--teal-dark);
+      background: #e1f1ed;
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .controls {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .72);
+      box-shadow: var(--shadow);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1.2fr auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search {
+      width: 100%;
+      border: 1px solid #b9c6c2;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      border: 1px solid #b9c6c2;
+      background: #fff;
+      color: #35514f;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: .84rem;
+      cursor: pointer;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .filter-btn.active {
+      border-color: var(--teal);
+      background: #dff1ec;
+      color: var(--teal-dark);
+    }
+
+    .results-line {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .84rem;
+      font-weight: 700;
+    }
+
+    footer {
+      margin-top: 22px;
+      padding: 22px 0 45px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: .86rem;
+      text-align: center;
+    }
+
+    .empty-message {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px dashed #c8c2b6;
+      color: #7b6f59;
+      background: #fff8e8;
+      font-size: .87rem;
+      display: none;
+    }
+
+    .empty-message.show {
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        padding-top: 44px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .control-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .hero-art {
+        min-height: 196px;
+      }
+      .card-mark {
+        inset: 22px 2% 12px 7%;
+      }
+      .section {
+        padding: 17px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">F2 ICT T1</div>
+    <div class="count-pill" id="totalCount">20 Pages Linked</div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Course navigation</div>
+        <h1>F2 ICT T1</h1>
+        <p class="lead">Use this page as the central directory for your Excel class.<br> <strong>This site is for reference only, please follow the direct instructions from your ICT teacher in class!</strong></p>
+        <div class="quick-links">
+          <a href="#lesson-notes">Jump to lesson notes</a>
+          <a href="#exercises">Jump to exercises</a>
+        </div>
+      </div>
+      <div class="hero-art" aria-hidden="true">
+        <div class="card-mark">
+          <strong>Course Progress Map</strong>
+          <div class="mini-bars">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="lesson-notes">
+      <div class="section-head">
+        <h2>Lesson Notes</h2>
+        <p class="sub" id="lessonCount">10 links</p>
+      </div>
+      <p class="lead"></p>
+
+      <div class="grid">
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-01.html">
+          <span class="title-wrap">
+            <strong>Lesson 01 Note</strong>
+            <small>lesson-note-01.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-02.html">
+          <span class="title-wrap">
+            <strong>Lesson 02 Note</strong>
+            <small>lesson-note-02.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-03.html">
+          <span class="title-wrap">
+            <strong>Lesson 03 Note</strong>
+            <small>lesson-note-03.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-04.html">
+          <span class="title-wrap">
+            <strong>Lesson 04 Note</strong>
+            <small>lesson-note-04.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-05.html">
+          <span class="title-wrap">
+            <strong>Lesson 05 Note</strong>
+            <small>lesson-note-05.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <!-- <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-06.html">
+          <span class="title-wrap">
+            <strong>Lesson 06 Note</strong>
+            <small>lesson-note-06.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-07.html">
+          <span class="title-wrap">
+            <strong>Lesson 07 Note</strong>
+            <small>lesson-note-07.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-08.html">
+          <span class="title-wrap">
+            <strong>Lesson 08 Note</strong>
+            <small>lesson-note-08.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-09.html">
+          <span class="title-wrap">
+            <strong>Lesson 09 Note</strong>
+            <small>lesson-note-09.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-10.html">
+          <span class="title-wrap">
+            <strong>Lesson 10 Note</strong>
+            <small>lesson-note-10.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a> -->
+      </div>
+      <p class="empty-message" id="lessonEmpty">No lesson note links match your current filter.</p>
+    </section>
+
+    <section class="section" id="exercises">
+      <div class="section-head">
+        <h2>Exercises</h2>
+        <p class="sub" id="exerciseCount">10 links</p>
+      </div>
+      <p class="lead"></p>
+
+      <div class="grid">
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-1-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 01 Guide</strong>
+            <small>excel-exercise-1-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-2-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 02 Guide</strong>
+            <small>excel-exercise-2-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-3-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 03 Guide</strong>
+            <small>excel-exercise-3-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-4-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 04 Guide</strong>
+            <small>excel-exercise-4-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-5-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 05 Guide</strong>
+            <small>excel-exercise-5-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-6-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 06 Guide</strong>
+            <small>excel-exercise-6-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-7-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 07 Guide</strong>
+            <small>excel-exercise-7-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <!-- <a class="link-card" data-type="exercise" data-status="pending" href="excel-exercise-8-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 08 Guide</strong>
+            <small>excel-exercise-8-guide.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="pending" href="excel-exercise-9-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 09 Guide</strong>
+            <small>excel-exercise-9-guide.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="pending" href="excel-exercise-10-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 10 Guide</strong>
+            <small>excel-exercise-10-guide.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a> -->
+      </div>
+      <p class="empty-message" id="exerciseEmpty">No exercise links match your current filter.</p>
+    </section>
+
+    <footer>
+      &copy; 2026-2027 F2 ICT T1
+    </footer>
+  </main>
+  <script>
+    const cards = [...document.querySelectorAll('.link-card')];
+    const searchInput = document.querySelector('#searchInput');
+    const totalCount = document.querySelector('#totalCount');
+    const resultsLine = document.querySelector('#resultsLine');
+    const lessonCount = document.querySelector('#lessonCount');
+    const exerciseCount = document.querySelector('#exerciseCount');
+    const lessonEmpty = document.querySelector('#lessonEmpty');
+    const exerciseEmpty = document.querySelector('#exerciseEmpty');
+
+    let activeType = 'all';
+    let activeStatus = 'all';
+
+    function setActiveButton(group, key, value) {
+      [...group.querySelectorAll('button')].forEach(button => {
+        button.classList.toggle('active', button.dataset[key] === value);
+      });
+    }
+
+    function matchesFilters(card, term) {
+      const text = card.textContent.toLowerCase();
+      const typeOk = activeType === 'all' || card.dataset.type === activeType;
+      const statusOk = activeStatus === 'all' || card.dataset.status === activeStatus;
+      const searchOk = !term || text.includes(term);
+      return typeOk && statusOk && searchOk;
+    }
+
+    function updateIndex() {
+      const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
+      let visibleTotal = 0;
+      let visibleLessons = 0;
+      let visibleExercises = 0;
+
+      cards.forEach(card => {
+        const show = matchesFilters(card, term);
+        card.classList.toggle('hidden', !show);
+        if (show) {
+          visibleTotal += 1;
+          if (card.dataset.type === 'lesson') {
+            visibleLessons += 1;
+          } else if (card.dataset.type === 'exercise') {
+            visibleExercises += 1;
+          }
+        }
+      });
+
+      if (totalCount) totalCount.textContent = `${visibleTotal} of ${cards.length} Pages Visible`;
+      lessonCount.textContent = `${visibleLessons} visible`;
+      exerciseCount.textContent = `${visibleExercises} visible`;
+      if (resultsLine) resultsLine.textContent = `Showing ${visibleTotal} of ${cards.length} links`;
+
+      lessonEmpty.classList.toggle('show', visibleLessons === 0);
+      exerciseEmpty.classList.toggle('show', visibleExercises === 0);
+    }
+
+    const typeFilters = document.querySelector('#typeFilters');
+    const statusFilters = document.querySelector('#statusFilters');
+
+    if (typeFilters) {
+      typeFilters.addEventListener('click', event => {
+        const button = event.target.closest('button[data-type]');
+        if (!button) return;
+        activeType = button.dataset.type;
+        setActiveButton(typeFilters, 'type', activeType);
+        updateIndex();
+      });
+    }
+
+    if (statusFilters) {
+      statusFilters.addEventListener('click', event => {
+        const button = event.target.closest('button[data-status]');
+        if (!button) return;
+        activeStatus = button.dataset.status;
+        setActiveButton(statusFilters, 'status', activeStatus);
+        updateIndex();
+      });
+    }
+
+    if (searchInput) searchInput.addEventListener('input', updateIndex);
+    updateIndex();
+  </script>
+</body>
+</html>

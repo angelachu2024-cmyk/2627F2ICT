@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lesson Note 02 | Numeric Labels and Worksheet Editing</title>
+  <link rel="stylesheet" href="excel-course.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">F2 ICT T1 Lesson Note</div>
+    <a class="back-link" href="index.html">Back to Index</a>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <p class="eyebrow">Lesson 02</p>
+      <h1>Numeric Labels and Editing a Worksheet</h1>
+      <p class="lead">This lesson helps you understand when numbers are used as labels, and how to change the structure of a worksheet by inserting or deleting rows and columns. It also introduces Data Validation.</p>
+    </section>
+
+    <section class="section">
+      <h2>1. Numeric Labels and Values</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Important idea</h3>
+          <ul class="step-list">
+            <li>A numeric label is a number that is treated as text, not as a value for calculation.</li>
+            <li>To force Excel to treat it as a label, type an apostrophe first, such as <strong>'001</strong>.</li>
+            <li>The apostrophe does not appear in the cell, but it does appear in the formula bar.</li>
+            <li>Values usually align to the right of the cell; labels usually align to the left.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Mini diagram</h3>
+          <table class="demo-table">
+            <thead><tr><th>Entry</th><th>Type</th><th>Result in Excel</th></tr></thead>
+            <tbody>
+              <tr><td>001</td><td>Value</td><td>May be changed or used in calculations</td></tr>
+              <tr><td>'001</td><td>Label</td><td>Shown as 001, not used in calculations</td></tr>
+              <tr><td>ABC</td><td>Label</td><td>Text entry</td></tr>
+            </tbody>
+          </table>
+          <div class="note">Use labels when the number is only an ID, code, or item number.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Insert and Delete Rows or Columns</h2>
+      <div class="grid-2">
+        <div class="card">
+          <ul class="step-list">
+            <li>When you insert a row or column, Excel creates space and shifts existing data.</li>
+            <li>When you delete a row or column, the data in that row or column is removed.</li>
+            <li>If data moves, formulas may also change, so always check your results again.</li>
+            <li>The format of the data moves with the data.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="diagram">
+            <div class="diagram-ribbon">Before and after inserting a column</div>
+            <div class="diagram-main">
+              <div class="diagram-side">
+                <p><strong>Before</strong>: A | B | C</p>
+                <p><strong>Insert a new column before B</strong></p>
+                <p><strong>After</strong>: A | New | B | C</p>
+              </div>
+              <div class="diagram-grid-wrap">
+                <table class="worksheet">
+                  <thead><tr><th class="corner"></th><th>A</th><th>B</th><th>C</th><th>D</th></tr></thead>
+                  <tbody>
+                    <tr><th class="rowhead">1</th><td>Item</td><td class="demo-highlight">New</td><td>Cost</td><td>Qty</td></tr>
+                    <tr><th class="rowhead">2</th><td>Pen</td><td class="demo-highlight">Item No.</td><td>$2.00</td><td>10</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Data Validation</h2>
+      <div class="grid-2">
+        <div class="card">
+          <ul class="step-list">
+            <li>Data Validation is used to control what can be typed into a cell.</li>
+            <li>It helps reduce mistakes by allowing only the correct type of data.</li>
+            <li>Excel can show an input message when a cell is selected.</li>
+            <li>Excel can also show an error message when the data is invalid.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="formula-box">Example rules: Decimal greater than 0; Whole number greater than or equal to 0</div>
+          <div class="note">This is useful for prices, quantities, and other fields that should not accept wrong values.</div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="pager-nav" aria-label="Page navigation">
+      <a class="pager-link" href="lesson-note-01.html">Previous: Lesson 01</a>
+      <a class="pager-link home" href="index.html">Index</a>
+      <a class="pager-link" href="lesson-note-03.html">Next: Lesson 03</a>
+    </nav>
+  </main>
+</body>
+</html>
