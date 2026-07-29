@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lesson Note 03 | Functions and Data Tools</title>
+    <style>
+        /* ===== Base ===== */
+        :root {
+            --ink: #18252c;
+            --muted: #5f6c70;
+            --paper: #f7f3ea;
+            --panel: #fffdf8;
+            --line: #d8d1c3;
+            --teal: #087f78;
+            --teal-dark: #075c58;
+            --coral: #e56b52;
+            --yellow: #f4c95d;
+            --green: #27845d;
+            --shadow: 0 18px 45px rgba(31, 45, 46, .11);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            line-height: 1.6;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: .45;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(8, 127, 120, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(8, 127, 120, .05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        /* ===== Topbar ===== */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 15px clamp(18px, 5vw, 76px);
+            color: #fff;
+            background: var(--teal-dark);
+            box-shadow: 0 4px 18px rgba(7, 92, 88, .2);
+            flex-wrap: wrap;
+        }
+        .brand {
+            font-weight: 800;
+            letter-spacing: .08em;
+            font-size: .82rem;
+            text-transform: uppercase;
+        }
+        .progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: .88rem;
+        }
+        progress {
+            width: 150px;
+            height: 8px;
+            accent-color: var(--yellow);
+        }
+        .back-link {
+            text-decoration: none;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, .4);
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: .85rem;
+            font-weight: 700;
+        }
+        .back-link:hover {
+            background: rgba(255, 255, 255, .15);
+        }
+        /* ===== Shell & Layout ===== */
+        .shell {
+            width: min(1120px, calc(100% - 36px));
+            margin: 0 auto;
+        }
+        .hero {
+            display: grid;
+            grid-template-columns: 1.15fr .85fr;
+            gap: 42px;
+            align-items: center;
+            min-height: 340px;
+            padding: 56px 0 40px;
+        }
+        .eyebrow {
+            color: var(--coral);
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+        h1,
+        h2,
+        h3 {
+            font-family: Georgia, serif;
+            line-height: 1.1;
+            margin: 0 0 12px;
+        }
+        h1 {
+            max-width: 650px;
+            font-size: clamp(2.6rem, 5.5vw, 5rem);
+            letter-spacing: -.03em;
+        }
+        h2 {
+            font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+        }
+        h3 {
+            font-size: 1.3rem;
+        }
+        .hero p {
+            max-width: 650px;
+            color: var(--muted);
+            font-size: 1.05rem;
+        }
+        .hero-art {
+            position: relative;
+            min-height: 220px;
+        }
+        .hero-art::before {
+            content: "";
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            right: 5%;
+            top: 4%;
+            border-radius: 50%;
+            background: var(--yellow);
+            opacity: .4;
+        }
+        .hero-art::after {
+            content: "";
+            position: absolute;
+            width: 110px;
+            height: 110px;
+            left: 8%;
+            bottom: 5%;
+            border-radius: 50%;
+            background: var(--coral);
+            opacity: .3;
+        }
+        .sheet-mark {
+            position: relative;
+            z-index: 1;
+            padding: 20px;
+            border: 2px solid var(--ink);
+            background: var(--panel);
+            box-shadow: 12px 13px 0 var(--teal);
+            transform: rotate(-2deg);
+            max-width: 380px;
+            margin: 0 auto;
+        }
+        .sheet-mark strong {
+            display: block;
+            margin-bottom: 10px;
+            font: 700 1.1rem Georgia, serif;
+        }
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            border-top: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+            font-size: .7rem;
+        }
+        .mini-grid span {
+            min-height: 26px;
+            padding: 4px;
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            text-align: center;
+        }
+        .mini-grid .hl {
+            background: #fff4c9;
+            font-weight: 700;
+            color: #7c4a00;
+        }
+        .mini-grid .label {
+            background: #d9efeb;
+            font-weight: 700;
+        }
+        /* ===== Layout: sidebar + content ===== */
+        .layout {
+            display: grid;
+            grid-template-columns: 215px 1fr;
+            gap: 42px;
+            align-items: start;
+        }
+        .toc {
+            position: sticky;
+            top: 76px;
+            padding: 20px 0;
+        }
+        .toc h3 {
+            font-size: 1rem;
+            font-family: "Trebuchet MS", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .toc a {
+            display: block;
+            padding: 8px 0 8px 13px;
+            color: var(--muted);
+            border-left: 2px solid var(--line);
+            text-decoration: none;
+            font-size: .9rem;
+            transition: all .2s;
+        }
+        .toc a:hover,
+        .toc a:focus {
+            color: var(--teal);
+            border-left-color: var(--teal);
+        }
+        /* ===== Steps ===== */
+        .step {
+            scroll-margin-top: 90px;
+            padding: 34px 0 40px;
+            border-top: 1px solid var(--line);
+        }
+        .step-heading {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .step-number {
+            display: grid;
+            place-items: center;
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            color: #fff;
+            background: var(--coral);
+            border-radius: 50%;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+        .step-heading h2 {
+            margin-bottom: 4px;
+        }
+        .step-lead {
+            margin: 0 0 18px;
+            color: var(--muted);
+            font-size: 1rem;
+        }
+        /* ===== Cards ===== */
+        .card {
+            padding: 23px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .88);
+            box-shadow: var(--shadow);
+            margin-bottom: 18px;
+        }
+        .card h3 {
+            margin-top: 0;
+            font-size: 1.2rem;
+        }
+        .action-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        label.check {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            padding: 4px 0;
+        }
+        label.check input {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            accent-color: var(--teal);
+            flex-shrink: 0;
+        }
+        label.check input:checked+span {
+            color: var(--muted);
+            text-decoration: line-through;
+        }
+        .keyword-zh {
+            display: inline-block;
+            font-size: .8rem;
+            color: var(--muted);
+            background: #f0f4f2;
+            padding: 0 6px;
+            border-radius: 3px;
+            margin-left: 4px;
+        }
+        .note {
+            border-left: 4px solid var(--yellow);
+            padding: 13px 16px;
+            background: #fff7d9;
+            margin: 12px 0;
+        }
+        .tip-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin: 12px 0;
+        }
+        .tip {
+            padding: 16px;
+            background: #eef5f1;
+            border-top: 3px solid var(--teal);
+        }
+        .tip strong {
+            display: block;
+            color: var(--teal-dark);
+        }
+        .done {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            margin-top: 20px;
+            padding: 17px;
+            border-top: 1px solid var(--line);
+        }
+        .done-status {
+            color: var(--muted);
+            font-size: .87rem;
+        }
+        .step-complete {
+            border-color: var(--green) !important;
+        }
+        .next-button {
+            padding: 10px 18px;
+            border: 0;
+            color: #fff;
+            background: var(--teal);
+            border-radius: 4px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+        .next-button:hover {
+            background: var(--teal-dark);
+        }
+        /* ===== Graphics ===== */
+        .window-diagram {
+            border: 2px solid #9fb2ad;
+            background: #fff;
+            overflow: hidden;
+            margin: 14px 0;
+        }
+        .diagram-ribbon {
+            padding: 9px 14px;
+            font-weight: 700;
+            color: #fff;
+            background: var(--teal);
+            font-size: .9rem;
+        }
+        .diagram-main {
+            display: grid;
+            grid-template-columns: 190px 1fr;
+            min-height: 180px;
+        }
+        .diagram-side {
+            border-right: 1px solid #d3dfdb;
+            background: #f3f8f6;
+            padding: 12px;
+        }
+        .diagram-side p {
+            margin: 0 0 7px;
+            font-size: .85rem;
+        }
+        .diagram-side strong {
+            color: var(--teal-dark);
+        }
+        .diagram-grid-wrap {
+            padding: 12px;
+            overflow-x: auto;
+        }
+        .worksheet {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: .85rem;
+        }
+        .worksheet th,
+        .worksheet td {
+            border: 1px solid #c7d3cf;
+            height: 34px;
+            text-align: center;
+            padding: 4px;
+            min-width: 36px;
+        }
+        .worksheet thead th {
+            background: #e8efec;
+            color: #5c6f6d;
+            font-weight: 700;
+        }
+        .worksheet .rowhead {
+            width: 48px;
+            background: #e8efec;
+            color: #5c6f6d;
+            font-weight: 700;
+        }
+        .worksheet .corner {
+            width: 48px;
+            background: #dde7e4;
+        }
+        .worksheet .focus {
+            background: #fff4c9;
+            border: 2px solid var(--coral);
+            font-weight: 700;
+            color: #7c4a00;
+        }
+        .worksheet .highlight-row {
+            background: #d9efeb;
+        }
+        .mini-note {
+            margin-top: 8px;
+            color: var(--muted);
+            font-size: .86rem;
+        }
+        /* ===== Expandable diff card ===== */
+        .diff-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            background: #eaf2f8;
+            border: 1px dashed var(--teal);
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            color: var(--teal-dark);
+            transition: background .2s;
+            user-select: none;
+            margin: 14px 0 0;
+        }
+        .diff-toggle:hover {
+            background: #d5e6f0;
+        }
+        .diff-toggle .arrow {
+            display: inline-block;
+            transition: transform .3s;
+            font-size: 1.2rem;
+        }
+        .diff-toggle .arrow.open {
+            transform: rotate(90deg);
+        }
+        .diff-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .4s ease, padding .3s ease;
+            padding: 0 16px;
+            background: #f8fbfd;
+            border-radius: 0 0 6px 6px;
+            border-left: 1px solid var(--teal);
+            border-right: 1px solid var(--teal);
+            border-bottom: 1px solid var(--teal);
+        }
+        .diff-content.open {
+            max-height: 600px;
+            padding: 16px;
+        }
+        .diff-content ul {
+            margin: 6px 0;
+            padding-left: 22px;
+        }
+        .diff-content li {
+            margin-bottom: 4px;
+            font-size: .92rem;
+        }
+        .diff-content strong {
+            color: var(--coral);
+        }
+        /* ===== Quiz ===== */
+        .quiz {
+            display: grid;
+            gap: 12px;
+            margin: 14px 0;
+        }
+        .quiz select {
+            padding: 8px 12px;
+            border: 1px solid var(--line);
+            border-radius: 4px;
+            font: inherit;
+            background: #fff;
+            max-width: 300px;
+        }
+        .quiz button {
+            width: fit-content;
+            border: 0;
+            background: var(--teal);
+            color: #fff;
+            padding: 10px 18px;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .quiz button:hover {
+            background: var(--teal-dark);
+        }
+        .quiz-result {
+            min-height: 24px;
+            font-weight: 700;
+        }
+        /* ===== Footer & pager ===== */
+        footer {
+            margin-top: 32px;
+            padding: 24px 0 32px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            font-size: .86rem;
+            text-align: center;
+        }
+        .pager-nav {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pager-link {
+            text-decoration: none;
+            color: #fff;
+            background: var(--teal-dark);
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 700;
+            border: 1px solid rgba(7, 92, 88, .3);
+            font-size: .88rem;
+            transition: opacity .2s;
+        }
+        .pager-link:hover {
+            opacity: .85;
+        }
+        .pager-link.home {
+            background: #fff;
+            color: var(--teal-dark);
+            border-color: #b8c5c1;
+        }
+        .formula-box {
+            background: #e1f1ed;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: Consolas, monospace;
+            font-size: 1rem;
+            color: var(--teal-dark);
+            margin: 8px 0;
+        }
+        .formula-box code {
+            background: transparent;
+            padding: 0;
+            color: var(--teal-dark);
+        }
+        .button-demo {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f4f2;
+            border: 1px solid #b8c5c1;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-weight: 600;
+            font-size: .85rem;
+            color: var(--teal-dark);
+        }
+        .button-demo .icon {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .help-tip {
+            background: #eaf2f8;
+            padding: 10px 14px;
+            border-radius: 4px;
+            border-left: 3px solid var(--teal);
+            font-size: .92rem;
+        }
+        .func-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .92rem;
+        }
+        .func-table th,
+        .func-table td {
+            border: 1px solid var(--line);
+            padding: 8px 10px;
+            text-align: left;
+        }
+        .func-table th {
+            background: var(--teal);
+            color: #fff;
+            font-weight: 700;
+        }
+        .func-table tr:nth-child(even) {
+            background: #faf7f0;
+        }
+        .func-table code {
+            background: #e1f1ed;
+            padding: 0 6px;
+            border-radius: 3px;
+            font-size: .88rem;
+            color: var(--teal-dark);
+        }
+        .img-placeholder {
+            background: #e8efec;
+            border: 1px dashed var(--line);
+            border-radius: 4px;
+            padding: 20px;
+            text-align: center;
+            color: var(--muted);
+            font-size: .85rem;
+            margin: 8px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* ===== Responsive ===== */
+        @media (max-width: 820px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 40px;
+                gap: 24px;
+            }
+            .hero-art {
+                min-height: 180px;
+            }
+            .layout {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            .toc {
+                position: static;
+                display: flex;
+                overflow-x: auto;
+                gap: 12px;
+                padding: 0 0 16px;
+                flex-wrap: nowrap;
+            }
+            .toc h3 {
+                display: none;
+            }
+            .toc a {
+                flex: 0 0 auto;
+                border-left: 0;
+                border-bottom: 2px solid var(--line);
+                white-space: nowrap;
+                padding: 6px 12px;
+            }
+            .diagram-main {
+                grid-template-columns: 1fr;
+            }
+            .diagram-side {
+                border-right: 0;
+                border-bottom: 1px solid #d3dfdb;
+            }
+            .tip-grid {
+                grid-template-columns: 1fr;
+            }
+            .done {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 8px;
+            }
+            progress {
+                width: 110px;
+            }
+        }
+        @media (max-width: 500px) {
+            .shell {
+                width: calc(100% - 16px);
+            }
+            .hero {
+                padding-top: 28px;
+            }
+            .sheet-mark {
+                padding: 14px;
+            }
+            .card {
+                padding: 16px;
+            }
+            .step {
+                padding: 22px 0 28px;
+            }
+            .step-heading {
+                gap: 10px;
+            }
+            .step-number {
+                width: 34px;
+                height: 34px;
+                font-size: .9rem;
+            }
+            .diff-toggle {
+                font-size: .85rem;
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="brand">F2 ICT T1 · Lesson Note 03</div>
+        <div class="progress-wrap">
+            <span id="progressText">0 of 7 sections complete</span>
+            <progress id="progress" value="0" max="7"></progress>
+        </div>
+        <a class="back-link" href="index.html">← Index</a>
+    </header>
+
+    <main class="shell">
+
+        <!-- ===== HERO ===== -->
+        <section class="hero">
+            <div>
+                <div class="eyebrow">Lesson 03</div>
+                <h1>Functions &amp; Data Tools</h1>
+                <p>This lesson teaches you what functions are, how to use them — both by typing and with buttons — and how to filter data with AutoFilter. You will learn to work with SUM, AVERAGE, COUNT, COUNTIF, MAX, and MIN.</p>
+                
+            </div>
+            <div class="hero-art" aria-hidden="true">
+                <div class="sheet-mark">
+                    <strong>Functions &amp; Tools</strong>
+                    <div class="mini-grid">
+                        <span class="label">Σ</span><span class="label">fx</span><span class="label">Help</span><span class="label">Sort</span><span class="label">Filter</span>
+                        <span>AutoSum</span><span>Insert</span><span>Search</span><span>Order</span><span>Show</span>
+                    </div>
+                    <div style="margin-top:6px;font-size:.7rem;color:var(--muted);">Functions are built‑in formulas</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== LAYOUT: SIDEBAR + CONTENT ===== -->
+        <div class="layout">
+
+            <!-- SIDEBAR / TOC -->
+            <nav class="toc" aria-label="Guide sections">
+                <h3>Route</h3>
+                <a href="#section-1">01 What is a Function?</a>
+                <a href="#section-2">02 Common Functions</a>
+                <a href="#section-3">03 AutoSum Button</a>
+                <a href="#section-4">04 Insert Function (fx)</a>
+                <a href="#section-5">05 Typing Functions</a>
+                <a href="#section-6">06 AutoFilter</a>
+                <a href="#section-7">07 Quick Check</a>
+            </nav>
+
+            <!-- ===== CONTENT ===== -->
+            <div>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 1: What is a Function? -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-1">
+                    <div class="step-heading">
+                        <span class="step-number">01</span>
+                        <div>
+                            <h2>What is a Function?</h2>
+                            <p class="step-lead">A function is a built‑in formula that performs a specific calculation automatically.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Definition</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li>A <strong>function</strong> <span class="keyword-zh">（函數）</span> is a predefined formula that Excel provides to help you perform common calculations quickly.</li>
+                            <li>Instead of writing <code>=A1+A2+A3+A4+A5</code>, you can use <code>=SUM(A1:A5)</code>.</li>
+                            <li>Functions are designed to save time and reduce errors.</li>
+                            <li>Excel has hundreds of functions for mathematics, statistics, finance, text manipulation, dates, and more.</li>
+                        </ul>
+                        <div class="formula-box">=SUM(A1:A5) &nbsp;→&nbsp; adds all values in the range A1 to A5</div>
+                        <div class="note">[Key idea] Every function has a <strong>name</strong> (e.g., SUM) and <strong>arguments</strong> — the data the function needs to work. In <code>=SUM(A1:A5)</code>, the argument is <code>A1:A5</code>.</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Function syntax</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li><strong>Syntax</strong> <span class="keyword-zh">（語法）</span> is the structure or format of a function.</li>
+                            <li>All functions start with an <strong>equals sign (=)</strong>.</li>
+                            <li>Then the function name, followed by parentheses <code>()</code>.</li>
+                            <li>Inside the parentheses are the <strong>arguments</strong> <span class="keyword-zh">（引數）</span> — the inputs the function needs.</li>
+                            <li>For example: <code>=AVERAGE(B2:B10)</code> — AVERAGE is the function name, <code>B2:B10</code> is the argument.</li>
+                        </ul>
+                        <div class="help-tip">
+                            <strong>Pro tip:</strong> You do not need to memorise all functions. Excel provides tools (AutoSum, Insert Function, and Help) to help you find and use the right function.
+                        </div>
+                    </div>
+
+                    <!-- Excel 365 Difference -->
+                    <div class="diff-toggle" onclick="toggleDiff(this)">
+                        <span class="arrow">▶</span> Excel 2024 vs Excel 365 – Functions
+                    </div>
+                    <div class="diff-content">
+                        <ul>
+                            <li><strong>Core functions</strong> (SUM, AVERAGE, COUNT, COUNTIF, MAX, MIN) work identically.</li>
+                            <li>Excel 365 has <strong>newer functions</strong> like XLOOKUP, FILTER, SORT, UNIQUE — not in Excel 2024.</li>
+                            <li>Excel 365 supports <strong>dynamic arrays</strong> — functions can spill results into multiple cells automatically.</li>
+                        </ul>
+                    </div>
+
+                    <div class="done">
+                        <span class="done-status">Understand what a function is? Tick the box.</span>
+                        <button class="next-button" data-next="section-2">Next: Common Functions →</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="1"><span>I know that a function is a built‑in formula, and that it has a name and arguments.</span></label>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 2: Common Functions -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-2">
+                    <div class="step-heading">
+                        <span class="step-number">02</span>
+                        <div>
+                            <h2>Common Functions</h2>
+                            <p class="step-lead">Learn the six most frequently used functions for summarising data.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Function reference table</h3>
+                        <div style="overflow-x:auto;">
+                            <table class="func-table">
+                                <thead>
+                                    <tr><th>Function</th><th>What it does <span class="keyword-zh">（功能）</span></th><th>Example</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><code>=SUM( )</code></td>
+                                        <td>Adds all values in a range <span class="keyword-zh">（加總）</span></td>
+                                        <td><code>=SUM(A1:A10)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>=AVERAGE( )</code></td>
+                                        <td>Calculates the mean of values in a range <span class="keyword-zh">（平均值）</span></td>
+                                        <td><code>=AVERAGE(B2:B20)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>=COUNT( )</code></td>
+                                        <td>Counts cells that contain numbers <span class="keyword-zh">（計數）</span></td>
+                                        <td><code>=COUNT(C5:C15)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>=COUNTIF( )</code></td>
+                                        <td>Counts cells that meet a condition <span class="keyword-zh">（條件計數）</span></td>
+                                        <td><code>=COUNTIF(D:D, ">0")</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>=MAX( )</code></td>
+                                        <td>Finds the largest value in a range <span class="keyword-zh">（最大值）</span></td>
+                                        <td><code>=MAX(E3:E12)</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td><code>=MIN( )</code></td>
+                                        <td>Finds the smallest value in a range <span class="keyword-zh">（最小值）</span></td>
+                                        <td><code>=MIN(F5:F25)</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="note">[Tip] COUNTIF uses a condition in quotes, e.g., <code>">0"</code> for values greater than zero, or <code>"Pass"</code> to count cells containing the word "Pass".</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Arguments explained</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li><strong>Arguments</strong> <span class="keyword-zh">（引數）</span> are the inputs you supply to a function.</li>
+                            <li>In <code>=MAX(A1:A10)</code>, the argument is <code>A1:A10</code> — the range to check.</li>
+                            <li>Some functions have multiple arguments, e.g., <code>=COUNTIF(range, criteria)</code>.</li>
+                            <li>Arguments can be:</li>
+                            <ul style="padding-left:22px;margin:4px 0 0 0;">
+                                <li><strong>Ranges</strong> — e.g., <code>A1:A10</code></li>
+                                <li><strong>Single values</strong> — e.g., <code>10</code> or <code>"Apple"</code></li>
+                                <li><strong>Other functions</strong> — e.g., <code>=SUM(A1:A10, B1:B10)</code></li>
+                            </ul>
+                        </ul>
+                        <div style="background:#f3f8f6;padding:10px 14px;border-radius:4px;margin-top:10px;">
+                            <strong>Example:</strong> <code>=COUNTIF(G5:G12, ">0")</code> → <code>G5:G12</code> is the range, <code>">0"</code> is the condition.
+                        </div>
+                    </div>
+
+                    <div class="done">
+                        <span class="done-status">Know the common functions? Tick the box.</span>
+                        <button class="next-button" data-next="section-3">Next: AutoSum Button →</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="2"><span>I understand what SUM, AVERAGE, COUNT, COUNTIF, MAX, and MIN do, and I know what arguments are.</span></label>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 3: AutoSum Button -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-3">
+                    <div class="step-heading">
+                        <span class="step-number">03</span>
+                        <div>
+                            <h2>AutoSum Button (Σ)</h2>
+                            <p class="step-lead">Learn how to use the AutoSum button to quickly insert SUM, AVERAGE, COUNT, MAX, or MIN — without typing any formula.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Where to find AutoSum</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li>The <strong>AutoSum</strong> button <span class="keyword-zh">（自動加總）</span> is on the <strong>Home</strong> tab, in the <strong>Editing</strong> group (far right).</li>
+                            <li>It looks like the Greek letter <strong>Σ</strong> (sigma).</li>
+                            <li>Click the dropdown arrow next to it to see other options: <strong>Sum</strong>, <strong>Average</strong>, <strong>Count Numbers</strong>, <strong>Max</strong>, <strong>Min</strong>.</li>
+                            <li>You can also find it on the <strong>Formulas</strong> tab, in the <strong>Function Library</strong> group.<br><img src="images/ex03_img09.png" alt="AutoSum button"></li>
+                        </ul>
+                        <div class="note">[Tip] AutoSum <strong>guesses</strong> the range you want to calculate. Always check that the highlighted range is correct before pressing Enter.</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>How to use it — step by step</h3>
+                        <ol style="padding-left:22px;margin:8px 0 0;">
+                            <li>Click the cell where you want the result to appear (e.g., below a column of numbers).</li>
+                            <li>Click the <strong>AutoSum</strong> button (Σ) on the Home tab.</li>
+                            <li>Excel highlights a suggested range. If it is correct, press <kbd>Enter</kbd>.</li>
+                            <li>If the range is wrong, drag to select the correct range, then press <kbd>Enter</kbd>.</li>
+                            <li>To use <strong>Average</strong>, <strong>Max</strong>, <strong>Min</strong>, or <strong>Count</strong>, click the dropdown arrow next to AutoSum and choose the function you need.</li>
+                        </ol>
+                    </div>
+
+                    <!-- Excel 365 Difference -->
+                    <div class="diff-toggle" onclick="toggleDiff(this)">
+                        <span class="arrow">▶</span> Excel 2024 vs Excel 365 – AutoSum
+                    </div>
+                    <div class="diff-content">
+                        <ul>
+                            <li><strong>Same button location</strong> – Home tab, Editing group, Σ symbol.</li>
+                            <li>Excel 365 has a <strong>“Recommended”</strong> AutoSum suggestion that may appear when you select a range — it suggests the most likely summary.</li>
+                            <li>Excel 365 also shows <strong>quick calculations</strong> in the status bar (sum, average, count) when you select a range — a handy way to preview results without inserting a formula.</li>
+                            <li>The AutoSum button works identically. Use the status bar in Excel 365 to preview results.</li>
+                            <img src="images/notes3_img01.png" alt="Excel 365 AutoSum">
+                        </ul>
+                    </div>
+
+                    <div class="done">
+                        <span class="done-status">Understand AutoSum? Tick the box.</span>
+                        <button class="next-button" data-next="section-4">Next: Insert Function →</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="3"><span>I can use the AutoSum button (Σ) to insert SUM, AVERAGE, MAX, MIN, and COUNT.</span></label>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 4: Insert Function (fx) -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-4">
+                    <div class="step-heading">
+                        <span class="step-number">04</span>
+                        <div>
+                            <h2>Insert Function (fx)</h2>
+                            <p class="step-lead">Learn how to find and insert any Excel function using the Insert Function dialog — a powerful tool for discovering new functions.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Where to find Insert Function</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li>The <strong>Insert Function</strong> button <span class="keyword-zh">（插入函數）</span> is next to the formula bar — it looks like <strong>fx</strong>.</li>
+                            <li>You can also find it on the <strong>Formulas</strong> tab, in the <strong>Function Library</strong> group.</li>
+                            <li>When you click it, the <strong>Insert Function</strong> dialog appears, where you can search for a function by name or by description.</li>
+                            <li>When you insert a function this way, Excel automatically adds the <strong>=</strong> sign for you.</li>
+                        </ul>
+                        <img src="images/ex03_img14.png" alt="">  <img src="images/ex03_img15.png" alt="">
+                    </div>
+
+
+                    <div class="done">
+                        <span class="done-status">Understand Insert Function? Tick the box.</span>
+                        <button class="next-button" data-next="section-5">Next: Typing Functions →</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="4"><span>I can open the Insert Function dialog (fx) and search for a function by describing what I want to do.</span></label>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 5: Typing Functions -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-5">
+                    <div class="step-heading">
+                        <span class="step-number">05</span>
+                        <div>
+                            <h2>Typing Functions Directly</h2>
+                            <p class="step-lead">Learn how to type functions directly into cells — the fastest way when you know the function name.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>How to type a function</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li>Click the cell where you want the result and type the function directly.<br><img src="images/notes3_img02.png" alt=""></li>
+                        </ul>
+                        <div class="formula-box">=SUM(A1:A10)</div>
+                        <div class="formula-box">=AVERAGE(B5:B20)</div>
+                        <div class="formula-box">=COUNT(C1:C30)</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Typing with cell references</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li>You can type cell references directly, e.g., <code>=A1+B1</code>.</li>
+                            <li>Or use ranges, e.g., <code>=SUM(A1:A10)</code>.</li>
+                            <li>You can also click and drag to select a range while typing — Excel fills in the range for you.</li>
+                            <li>For functions like COUNTIF, remember the condition goes in quotes: <code>=COUNTIF(G5:G12, ">0")</code>.</li>
+                        </ul>
+                        <div style="background:#f8fbfd;border:1px solid var(--line);border-radius:4px;padding:12px;font-family:Consolas,monospace;font-size:.9rem;">
+                            =COUNTIF(G5:G12, ">0") &nbsp;→&nbsp; counts cells in G5:G12 that are greater than 0
+                        </div>
+                    </div>
+
+                    <div class="done">
+                        <span class="done-status">Understand typing functions? Tick the box.</span>
+                        <button class="next-button" data-next="section-6">Next: AutoFilter →</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="5"><span>I can type a function directly, starting with =, and I know how to use the screen tip and Function Arguments dialog.</span></label>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 6: AutoFilter -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-6">
+                    <div class="step-heading">
+                        <span class="step-number">06</span>
+                        <div>
+                            <h2>AutoFilter</h2>
+                            <p class="step-lead">Learn how to show only the rows that meet a condition using AutoFilter — a powerful way to focus on specific data.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>What is AutoFilter?</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li><strong>AutoFilter</strong> <span class="keyword-zh">（自動篩選）</span> is a tool that shows only rows that meet a condition you set.</li>
+                            <li>It does <strong>not</strong> delete data — it simply hides rows that do not match the filter.</li>
+                            <li>You can filter by text (e.g., "contains A"), by numbers (e.g., "greater than 100"), by date, or by colour.</li>
+                            <li>Filtered rows can be copied, formatted, or used for further analysis.</li>
+                        </ul>
+                        <div class="note">[Tip] AutoFilter is often used to find specific records, such as all students who passed, or all sales above a certain amount.</div>
+                    </div>
+
+                    <div class="card">
+                        <h3>How to apply AutoFilter</h3>
+                        <ol style="padding-left:22px;margin:8px 0 0;">
+                            <li>Select the range of cells you want to filter (include the header row).</li>
+                            <li>Go to the <strong>Data</strong> tab, in the <strong>Sort &amp; Filter</strong> group, click <strong>Filter</strong> (or press <kbd>Ctrl+Shift+L</kbd>).</li>
+                            <li>Dropdown arrows appear in each header cell.</li>
+                            <li>Click the arrow in the column you want to filter.</li>
+                            <li>In the dropdown list, select or deselect items to set your criteria. Click <strong>OK</strong> to apply the filter.</li>
+                            <li>Only rows that match the criteria are now visible.</li>
+                        </ol>
+                        <img src="images/ex03_img17.png" alt="">
+                    </div>
+
+                    <div class="card">
+                        <h3>How to clear AutoFilter</h3>
+                        <ul style="padding-left:22px;margin:8px 0 0;">
+                            <li>To clear a filter from a specific column, click the dropdown arrow and choose <strong>Clear Filter</strong>.</li>
+                            <li>To remove all filters and show all rows again, click the <strong>Filter</strong> button again on the <strong>Data</strong> tab (or press <kbd>Ctrl+Shift+L</kbd> again).</li>
+                            <li>You can also use <strong>Clear</strong> in the Sort &amp; Filter group.</li>
+                        </ul>
+                        <div class="note">[Tip] Filtering is temporary — your data is not changed. You can turn filters on and off anytime.</div>
+                    </div>
+
+                    <!-- Excel 365 Difference -->
+                    <div class="diff-toggle" onclick="toggleDiff(this)">
+                        <span class="arrow">▶</span> Excel 2024 vs Excel 365 – AutoFilter
+                    </div>
+                    <div class="diff-content">
+                        <ul>
+                            <li><strong>Same core features</strong> — AutoFilter works the same way.</li>
+                            <img src="images/notes3_img03.png" alt="">
+                        </ul>
+                    </div>
+
+                    <div class="done">
+                        <span class="done-status">Understand AutoFilter? Tick the box.</span>
+                        <button class="next-button" data-next="section-7">Next: Quick Check →</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="6"><span>I can apply AutoFilter to show only rows that meet a condition, and I know how to clear filters.</span></label>
+                    </div>
+                </section>
+
+                <!-- ============================================================ -->
+                <!-- SECTION 7: Quick Check (Quiz) -->
+                <!-- ============================================================ -->
+                <section class="step" id="section-7">
+                    <div class="step-heading">
+                        <span class="step-number">07</span>
+                        <div>
+                            <h2>Quick Check</h2>
+                            <p class="step-lead">Test your understanding of functions, AutoSum, Insert Function, typing functions, and AutoFilter.</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Questions</h3>
+                        <div class="quiz">
+                            <label for="q1"><strong>Q1.</strong> What is a function in Excel?</label>
+                            <select id="q1">
+                                <option value="">Choose an answer</option>
+                                <option value="right">A built‑in formula that performs a calculation</option>
+                                <option value="wrong">A type of chart</option>
+                                <option value="wrong">A cell formatting option</option>
+                            </select>
+
+                            <label for="q2"><strong>Q2.</strong> Which button on the Home tab can quickly insert SUM, AVERAGE, MAX, MIN, or COUNT without typing a formula?</label>
+                            <select id="q2">
+                                <option value="">Choose an answer</option>
+                                <option value="right">AutoSum (Σ)</option>
+                                <option value="wrong">Insert Function (fx)</option>
+                                <option value="wrong">Sort &amp; Filter</option>
+                            </select>
+
+                            <label for="q3"><strong>Q3.</strong> What does AutoFilter do?</label>
+                            <select id="q3">
+                                <option value="">Choose an answer</option>
+                                <option value="wrong">It deletes rows that don't match</option>
+                                <option value="right">It hides rows that don't match</option>
+                                <option value="wrong">It sorts data alphabetically</option>
+                            </select>
+                        </div>
+                        <button id="checkQuiz" style="border:0;background:var(--teal);color:#fff;padding:10px 18px;font-weight:700;border-radius:4px;cursor:pointer;font:inherit;margin-top:8px;">Check answers</button>
+                        <div class="quiz-result" id="quizResult" aria-live="polite" style="margin-top:10px;"></div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Summary</h3>
+                        <ul style="padding-left:22px;margin:6px 0 0;">
+                            <li><strong>Function</strong> <span class="keyword-zh">（函數）</span> – a built‑in formula with a name and arguments.</li>
+                            <li><strong>AutoSum (Σ)</strong> <span class="keyword-zh">（自動加總）</span> – quick button for SUM, AVERAGE, COUNT, MAX, MIN.</li>
+                            <li><strong>Insert Function (fx)</strong> <span class="keyword-zh">（插入函數）</span> – search for any function by description.</li>
+                            <li><strong>Typing functions</strong> <span class="keyword-zh">（輸入函數）</span> – type =SUM( ) directly for speed.</li>
+                            <li><strong>AutoFilter</strong> <span class="keyword-zh">（自動篩選）</span> – show only rows that meet a condition.</li>
+                            <li><strong>Help (F1)</strong> <span class="keyword-zh">（說明）</span> – read documentation for any function.</li>
+                        </ul>
+                        <div class="note" style="margin-top:12px;">
+                            You are now ready to apply these skills in Exercise 03!
+                        </div>
+                    </div>
+
+                    <!-- Excel 365 Difference – summary -->
+                    <div class="diff-toggle" onclick="toggleDiff(this)">
+                        <span class="arrow">▶</span> Excel 2024 vs Excel 365 – summary for home use
+                    </div>
+                    <div class="diff-content">
+                        <ul>
+                            <li><strong>All core functions</strong> (SUM, AVERAGE, COUNT, COUNTIF, MAX, MIN) work the same way.</li>
+                            <li><strong>AutoSum</strong> works identically. Excel 365 shows previews in the status bar.</li>
+                            <li><strong>Insert Function (fx)</strong> is the same. Excel 365 also has the “Tell Me” search box.</li>
+                            <li><strong>AutoFilter</strong> works the same. Excel 365 has a search box in the filter dropdown.</li>
+                            <li>You can complete all homework using Excel 365 at home – follow the same steps.</li>
+                        </ul>
+                    </div>
+
+                    <div class="done">
+                        <span class="done-status">Completed all sections? Tick the box and you're done!</span>
+                        <button class="next-button" data-next="top">Back to top</button>
+                    </div>
+                    <div class="action-list" style="margin-top:12px;">
+                        <label class="check"><input type="checkbox" data-section="7"><span>I have completed this lesson note and understand functions, AutoSum, Insert Function, typing functions, and AutoFilter.</span></label>
+                    </div>
+                </section>
+
+                <footer>
+                    F2 ICT T1 · Lesson Note 03 &nbsp;|&nbsp; © 2026–2027
+                </footer>
+
+            </div><!-- /content -->
+        </div><!-- /layout -->
+
+        <!-- ===== PAGER ===== -->
+        <nav class="pager-nav" aria-label="Page navigation">
+            <a class="pager-link" href="lesson-note-02.html">← Previous: Lesson 02</a>
+            <a class="pager-link home" href="index.html">Index</a>
+            <a class="pager-link" href="lesson-note-04.html">Next: Lesson 04 →</a>
+        </nav>
+
+    </main>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script>
+        // ---- Toggle expandable diff cards ----
+        function toggleDiff(el) {
+            const arrow = el.querySelector('.arrow');
+            const content = el.nextElementSibling;
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                arrow.classList.remove('open');
+                arrow.textContent = '▶';
+            } else {
+                content.classList.add('open');
+                arrow.classList.add('open');
+                arrow.textContent = '▼';
+            }
+        }
+
+        // ---- Progress tracking ----
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][data-section]');
+        const progress = document.getElementById('progress');
+        const progressText = document.getElementById('progressText');
+
+        function updateProgress() {
+            const checked = document.querySelectorAll('input[type="checkbox"][data-section]:checked').length;
+            const total = checkboxes.length;
+            progress.value = checked;
+            progress.max = total;
+            progressText.textContent = checked + ' of ' + total + ' sections complete';
+            document.querySelectorAll('.step').forEach(step => {
+                const cb = step.querySelector('input[type="checkbox"][data-section]');
+                if (cb && cb.checked) {
+                    step.classList.add('step-complete');
+                } else {
+                    step.classList.remove('step-complete');
+                }
+            });
+            const state = {};
+            checkboxes.forEach(cb => { state[cb.dataset.section] = cb.checked; });
+            localStorage.setItem('lessonNote03_state', JSON.stringify(state));
+        }
+
+        const saved = JSON.parse(localStorage.getItem('lessonNote03_state') || '{}');
+        checkboxes.forEach(cb => {
+            const sec = cb.dataset.section;
+            if (saved[sec] === true) cb.checked = true;
+            cb.addEventListener('change', updateProgress);
+        });
+        updateProgress();
+
+        // ---- "Next" buttons ----
+        document.querySelectorAll('.next-button[data-next]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.next;
+                const target = targetId === 'top' ? document.querySelector('.shell') : document.getElementById(targetId);
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        // ---- Quiz checker ----
+        document.getElementById('checkQuiz').addEventListener('click', () => {
+            const q1 = document.getElementById('q1');
+            const q2 = document.getElementById('q2');
+            const q3 = document.getElementById('q3');
+            const result = document.getElementById('quizResult');
+
+            const a1 = q1.value === 'right';
+            const a2 = q2.value === 'right';
+            const a3 = q3.value === 'right';
+            const total = [a1, a2, a3].filter(Boolean).length;
+
+            let msg = 'You got ' + total + ' out of 3 correct. ';
+            if (total === 3) {
+                msg += 'Perfect! You are ready for the exercises.';
+                result.style.color = '#27845d';
+            } else if (total >= 2) {
+                msg += 'Good work! Review the sections you missed.';
+                result.style.color = '#e5a500';
+            } else {
+                msg += 'Please review the sections above and try again.';
+                result.style.color = '#b2503c';
+            }
+            const details = [];
+            if (!a1) details.push('Q1 (function definition)');
+            if (!a2) details.push('Q2 (AutoSum)');
+            if (!a3) details.push('Q3 (AutoFilter)');
+            if (details.length > 0) {
+                msg += ' Check: ' + details.join(', ') + '.';
+            }
+            result.textContent = msg;
+        });
+    </script>
+
+</body>
+</html>
