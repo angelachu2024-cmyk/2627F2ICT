@@ -1,2726 +1,709 @@
-<!DOCTYPE html>
-<!--
-  ============================================================================
-  The Code Trials of the Ancient Ruins — STUDENT CLIENT (with Challenge Mode)
-  ============================================================================
-  A visual-novel style Python practice game for classroom use.
-  Students write real Python in the browser (executed by Pyodide / WASM).
-
-  ----------------------------------------------------------------------------
-  HOW TO CONFIGURE THE BACKEND (API_BASE)
-  ----------------------------------------------------------------------------
-  1. Deploy a Cloudflare Worker (outline below) that exposes:
-        POST /submit    -> store one task record (JSON body, see payload below)
-        GET  /students  -> return { "students": [ ... ] } for the teacher page
-  2. Copy the deployed URL (e.g. "https://ruins-trial-api.your-name.workers.dev")
-     and paste it into the API_BASE constant below.
-  3. Do the SAME in teacher.html so both pages talk to the same backend.
-  4. If API_BASE is "" (empty) or unreachable, the game automatically falls back
-     to OFFLINE MODE: records are stored in localStorage via a small simulated
-     API. A warning badge "OFFLINE" appears in the HUD in that case.
-
-  ----------------------------------------------------------------------------
-  CLOUDFLARE WORKER DEPLOYMENT OUTLINE (no need to implement to play offline)
-  ----------------------------------------------------------------------------
-  a) npm create cloudflare@latest ruins-trial-api   (choose "Hello World" worker)
-  b) Add a KV namespace binding in wrangler.toml, e.g.  binding = "TRIAL_DB"
-  c) Worker sketch:
-
-       const CORS = { "Access-Control-Allow-Origin": "*",
-                      "Access-Control-Allow-Headers": "Content-Type",
-                      "Access-Control-Allow-Methods": "GET,POST,OPTIONS" };
-       export default {
-         async fetch(request, env) {
-           if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
-           const url = new URL(request.url);
-           if (request.method === "POST" && url.pathname === "/submit") {
-             const body = await request.json();
-             const key = `student:${body.student_id}:task:${body.scene_id}|${body.task_type}`;
-             await env.TRIAL_DB.put(key, JSON.stringify(body));
-             return Response.json({ success: true }, { headers: CORS });
-           }
-           if (request.method === "GET" && url.pathname === "/students") {
-             const list = await env.TRIAL_DB.list({ prefix: "student:" });
-             const byStudent = {};
-             for (const k of list.keys) {
-               const rec = JSON.parse(await env.TRIAL_DB.get(k.name));
-               (byStudent[rec.student_id] ||= { student_id: rec.student_id, tasks: [] }).tasks.push(rec);
-             }
-             return Response.json({ students: Object.values(byStudent) }, { headers: CORS });
-           }
-           return new Response("Not found", { status: 404, headers: CORS });
-         }
-       };
-
-  d) npx wrangler deploy   ->  note the workers.dev URL, set it as API_BASE.
-
-  ----------------------------------------------------------------------------
-  TEACHER MANUAL TASK SELECTION (optional)
-  ----------------------------------------------------------------------------
-  The variable-room variant is random by default. Force one with a URL param:
-      index.html?variant=A    (or B / C)
-  ----------------------------------------------------------------------------
-
-  ----------------------------------------------------------------------------
-  ANTI-FREEZE DESIGN (infinite loop protection)
-  ----------------------------------------------------------------------------
-  Student code runs inside a Web Worker, so the UI NEVER freezes:
-    layer 1 (5 s):  a sys.settrace guard inside Python raises TimeoutError
-    layer 2 (5 s):  stdout is capped at 200,000 chars to prevent memory blowups
-    layer 3 (8 s):  the main thread hard-terminates the worker if it ever
-                    stops responding, then respawns it
-  If Web Workers are unavailable, the game falls back to main-thread Pyodide
-  with the same settrace guard.
-  ----------------------------------------------------------------------------
--->
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>The Code Trials of the Ancient Ruins</title>
-<style>
-  /* ============================== BASE ============================== */
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-    background: radial-gradient(ellipse at 50% 20%, #1d160c 0%, #0c0a06 70%);
-    color: #e8dcc0;
-    overflow: hidden;
-  }
-  .hidden { display: none !important; }
-  button { font-family: inherit; cursor: pointer; }
-  button:disabled { opacity: .45; cursor: not-allowed; }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Excel Course Index</title>
+  <style>
+    :root {
+      --ink: #18252c;
+      --muted: #5f6c70;
+      --paper: #f7f3ea;
+      --panel: #fffdf8;
+      --line: #d8d1c3;
+      --teal: #087f78;
+      --teal-dark: #075c58;
+      --coral: #e56b52;
+      --yellow: #f4c95d;
+      --green: #27845d;
+      --shadow: 0 18px 45px rgba(31, 45, 46, .11);
+    }
 
-  /* ============================ LOADING ============================= */
-  #loading-overlay {
-    position: fixed; inset: 0; z-index: 200;
-    background: #0c0a06; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 18px;
-    transition: opacity .6s;
-  }
-  #loading-overlay.hidden { opacity: 0; pointer-events: none; }
-  .spinner {
-    width: 54px; height: 54px; border-radius: 50%;
-    border: 4px solid #3a2f18; border-top-color: #d4af37; 
-    animation: spin 1s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  #loading-msg { color: #d4af37; letter-spacing: 2px; font-family: 'Imprint MT Shadow';}
-  #loading-sub { color: #8a7c5c; font-size: 13px; }
-  #retry-load { padding: 8px 22px; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
 
-  /* ============================== LAYOUT ============================ */
-  #app { display: flex; flex-direction: column; height: 100vh; max-width: 1150px; margin: 0 auto; padding: 8px; }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      opacity: .45;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(8,127,120,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(8,127,120,.05) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
 
-  /* HUD top bar */
-  #hud {
-    display: flex; align-items: center; gap: 14px;
-    padding: 8px 14px; background: rgba(20, 16, 8, .9);
-    border: 1px solid #4a3c1e; border-radius: 10px 10px 0 0; font-size: 14px;
-  }
-  #hud .title { color: #d4af37; font-weight: bold; letter-spacing: 2px; font-family: 'Imprint MT Shadow';}
-  #hud-scene { color: #b8a878; }
-  #hud-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  #hud-progress { color: #d4af37; min-width: 110px; text-align: right; font-family: 'Imprint MT Shadow';}
-  .badge-conn { font-size: 12px; padding: 3px 10px; border-radius: 20px; border: 1px solid; }
-  .badge-conn.online  { color: #7ddf8f; border-color: #2f6d3a; background: rgba(40, 90, 50, .3); }
-  .badge-conn.offline { color: #e0a35c; border-color: #7a5a2a; background: rgba(110, 80, 30, .3); }
-  .badge-challenge { font-size: 12px; padding: 3px 10px; border-radius: 20px; color: #c9a6ff; border: 1px solid #6a4a9a; background: rgba(80, 40, 130, .35); }
-  .btn {
-    background: linear-gradient(180deg, #6b5424, #4a3a16);
-    color: #f0e6c8; border: 1px solid #a08840; border-radius: 6px;
-    padding: 7px 16px; font-size: 14px; letter-spacing: 1px;
-    transition: transform .1s, box-shadow .2s;
-  }
-  .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 0 10px rgba(212,175,55,.4); }
-  .btn-primary { background: linear-gradient(180deg, #8a6c28, #5c4818); font-weight: bold; }
-  .btn-purple {
-    background: linear-gradient(180deg, #5a3a8a, #3a2260);
-    border-color: #9a7ad0; color: #e8dcff;
-  }
-  .btn-purple:hover:not(:disabled) { box-shadow: 0 0 12px rgba(160, 110, 220, .55); }
-  .btn-ghost { background: transparent; border-color: #6a5a34; color: #c8b888; padding: 5px 12px; font-size: 13px; }
-  .btn-exit {
-    background: linear-gradient(180deg, #7c2f22, #521a12);
-    border-color: #c06a4a; color: #ffd9c8; padding: 5px 14px; font-size: 13px;
-  }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 15px clamp(18px, 5vw, 76px);
+      color: #fff;
+      background: var(--teal-dark);
+      box-shadow: 0 4px 18px rgba(7, 92, 88, .2);
+    }
 
-  /* ============================== SCENE ============================= */
-  #scene {
-    position: relative; flex: 1; min-height: 420px;
-    border: 1px solid #4a3c1e; border-top: none;
-    border-radius: 0 0 10px 10px; overflow: hidden;
-    background: #141008;
-  }
-  #bg-layer {
-    position: absolute; inset: 0;
-    background-size: cover; background-position: center;
-    transition: opacity .5s; opacity: .85;
-  }
-  #bg-layer.bg-missing::after {
-    content: attr(data-label);
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #9a9a9a; background: #2e2e2e; font-size: 15px; letter-spacing: 1px;
-  }
-  #fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity .45s; z-index: 60; }
-  #fade.on { opacity: 1; }
+    .brand {
+      font-weight: 800;
+      letter-spacing: .08em;
+      font-size: .82rem;
+      text-transform: uppercase;
+    }
 
-  #sprite-box { position: absolute; right: 4%; bottom: 160px; z-index: 10; text-align: center; }
-  #sprite-box img { height: 300px; max-height: 45vh; filter: drop-shadow(0 6px 14px rgba(0,0,0,.7)); }
-  #sprite-box.pop img { animation: sprite-pop .5s ease; }
-  @keyframes sprite-pop { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+    .count-pill {
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 0px solid rgba(255,255,255,.35);
+      font-size: .8rem;
+      font-weight: 700;
+      white-space: nowrap;
+      colour: var(--teal-dark);
+    }
 
-  /* dialogue box */
-  #dialogue-box {
-    position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 20;
-    background: rgba(14, 11, 5, .93); border: 2px solid #6a5524; border-radius: 12px;
-    padding: 14px 18px 12px; min-height: 150px;
-    box-shadow: 0 0 22px rgba(0,0,0,.8), inset 0 0 40px rgba(60,45,10,.25);
-  }
-  #speaker { color: #d4af37; font-weight: bold; font-size: 16px; font-family: 'Imprint MT Shadow'; margin-bottom: 6px; letter-spacing: 2px; }
-  #dialogue-text { font-size: 16px; line-height: 1.7; min-height: 56px; white-space: pre-wrap; }
-  #next-btn { position: absolute; right: 14px; bottom: 8px; background: none; border: none; color: #d4af37; font-size: 15px; font-family: 'Imprint MT Shadow'; animation: blink 1.2s infinite; }
-  @keyframes blink { 50% { opacity: .25; } }
+    .shell {
+      width: min(1160px, calc(100% - 36px));
+      margin: 0 auto;
+    }
 
-  /* generic overlay panel */
-  .overlay-panel {
-    position: absolute; inset: 4% 6%; z-index: 30;
-    background: rgba(16, 13, 6, .96); border: 2px solid #6a5524; border-radius: 14px;
-    padding: 20px 26px; overflow-y: auto;
-    animation: panel-in .45s ease;
-  }
-  .overlay-panel.challenge-panel { border-color: #6a4a9a; }
-  .overlay-panel.challenge-panel h2, .overlay-panel.challenge-panel h3 { color: #c9a6ff; }
-  @keyframes panel-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-  .overlay-panel h2 { color: #d4af37; letter-spacing: 3px; margin-bottom: 12px; font-size: 20px; font-family: 'Imprint MT Shadow';}
-  .overlay-panel h3 { color: #d4af37; letter-spacing: 2px; margin-bottom: 10px; font-size: 17px; font-family: 'Imprint MT Shadow';}
-  .overlay-panel ul { margin: 0 0 12px 22px; line-height: 1.9; font-size: 15px; }
-  .overlay-panel p { line-height: 1.8; font-size: 15px; }
-  .overlay-panel pre.example {
-    background: #12100a; border: 1px solid #3f341a; border-radius: 8px;
-    padding: 10px 14px; margin: 10px 0; font-family: Consolas, monospace;
-    font-size: 13.5px; line-height: 1.55; overflow-x: auto; color: #d9e6b0;
-  }
-  .panel-actions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: 42px;
+      align-items: center;
+      min-height: 360px;
+      padding: 68px 0 48px;
+    }
 
-  /* main menu */
-  #menu-panel { display: flex; flex-direction: column; gap: 12px; }
-  .menu-btn {
-    display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-    width: 100%; text-align: left; padding: 14px 20px; border-radius: 10px; font-size: 16px;
-  }
-  .menu-btn small { font-size: 12.5px; opacity: .8; font-weight: normal; letter-spacing: 0; }
-  .menu-btn.locked { opacity: .5; filter: grayscale(.6); cursor: not-allowed; }
+    .eyebrow {
+      color: var(--coral);
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+    }
 
-  /* student identity pickers */
-  .picker {
-    background: #241d0e; color: #f0e6c8; border: 1px solid #a08840; border-radius: 6px;
-    padding: 10px 12px; font-size: 16px; font-family: inherit; min-width: 130px;
-  }
-  .picker:focus { outline: none; border-color: #d4af37; }
+    h1, h2, h3 {
+      font-family: Georgia, serif;
+      line-height: 1.1;
+      margin: 0 0 14px;
+    }
 
-  /* decorative image */
-  .deco-img { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; border: 1px solid #4a3c1e; display: block; margin-bottom: 12px; opacity: .9; }
-  .img-missing {
-    display: flex; align-items: center; justify-content: center;
-    background: #3a3a3a; color: #b5b5b5; border: 1px dashed #6e6e6e;
-    font-size: 12px; text-align: center; line-height: 1.5;
-  }
+    h1 {
+      max-width: 680px;
+      font-size: clamp(2.6rem, 6vw, 5.2rem);
+      letter-spacing: -.04em;
+    }
 
-  /* task panel */
-  .task-goal {
-    background: rgba(70, 55, 18, .35); border-left: 4px solid #d4af37;
-    padding: 10px 14px; margin: 10px 0; line-height: 1.8; font-size: 15px;
-  }
-  .challenge-panel .task-goal { border-left-color: #c9a6ff; background: rgba(70, 45, 110, .3); }
-  .task-goal .target { color: #ffd968; font-weight: bold; }
-  .task-goal .inputs { color: #b8e0ff; }
-  #editor {
-    width: 100%; height: 150px; resize: vertical;
-    background: #12100a; color: #d9e6b0; border: 1px solid #6a5524; border-radius: 8px;
-    padding: 12px; font-family: Consolas, "Courier New", monospace; font-size: 14.5px; line-height: 1.55;
-    tab-size: 4;
-  }
-  #editor:focus { outline: none; border-color: #d4af37; box-shadow: 0 0 8px rgba(212,175,55,.35); }
-  #output-pre {
-    background: #0a0906; border: 1px solid #3f341a; border-radius: 8px;
-    padding: 10px 12px; margin-top: 10px; min-height: 44px; max-height: 150px; overflow: auto;
-    font-family: Consolas, monospace; font-size: 13.5px; white-space: pre-wrap;
-  }
-  #output-pre .err { color: #ff8f7a; }
-  .feedback { margin-top: 10px; padding: 10px 14px; border-radius: 8px; font-size: 15px; line-height: 1.7; display: none; }
-  .feedback.ok  { display: block; background: rgba(40, 90, 45, .3); border: 1px solid #3f7a4a; color: #9fe8ad; }
-  .feedback.bad { display: block; background: rgba(100, 40, 30, .3); border: 1px solid #8a4a3a; color: #ffb3a0; }
-  .feedback.info { display: block; background: rgba(72, 71, 22, .28); border: 1px solid #7a6b2d; color: #f3db94; }
-  .challenge-panel.glow { animation: slab-glow-purple 1.4s ease 2; }
-  @keyframes slab-glow-purple {
-    0%, 100% { box-shadow: none; }
-    50% { box-shadow: 0 0 30px 6px rgba(190, 140, 255, .7); border-color: #e2ccff; }
-  }
+    h2 {
+      font-size: clamp(1.6rem, 3.4vw, 2.4rem);
+    }
 
-  .glow { animation: slab-glow 1.4s ease 2; }
-  @keyframes slab-glow {
-    0%, 100% { box-shadow: none; }
-    50% { box-shadow: 0 0 30px 6px rgba(255, 220, 120, .75); border-color: #ffe9a8; }
-  }
+    p.lead {
+      max-width: 650px;
+      color: var(--muted);
+      font-size: 1.07rem;
+      margin: 0;
+    }
 
-  /* full-panel door-open flash */
-  #door-flash { position: absolute; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; /*background: rgba(0,0,0,.55);*/ }
-  #door-flash img { max-width: 60%; max-height: 70%; border-radius: 10px; /*box-shadow: 0 0 50px rgba(255, 220, 120, .6);*/ animation: panel-in .6s ease; }
+    .hero-art {
+      position: relative;
+      min-height: 240px;
+    }
 
-  /* summary table */
-  #summary-table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 14px; }
-  #summary-table th, #summary-table td { border: 1px solid #5a4a24; padding: 7px 12px; text-align: center; }
-  #summary-table th { background: rgba(80, 62, 22, .4); color: #d4af37; }
-  .st-ok { color: #8fe09c; } .st-no { color: #ff9d8a; } .st-bonus { color: #c9b6ff; }
+    .hero-art::before {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      right: 5%;
+      top: 3%;
+      border-radius: 50%;
+      background: var(--yellow);
+    }
 
-  /* runnable example inside teaching panels */
-  .example-box { margin-top: 14px; border: 1px dashed #a08840; border-radius: 10px; padding: 12px 14px; background: rgba(60, 48, 18, .25); }
-  .example-box h4 { color: #d4af37; margin-bottom: 8px; letter-spacing: 1px; font-size: 15px; font-family: 'Imprint MT Shadow';}
-  .challenge-panel .example-box { border-color: #9a7ad0; background: rgba(70, 45, 110, .2); }
-  .example-note { color: #b8a878; font-size: 13.5px; margin: 6px 0 8px; line-height: 1.6; }
-  .example-editor {
-    width: 100%; height: 110px; resize: vertical;
-    background: #12100a; color: #d9e6b0; border: 1px solid #6a5524; border-radius: 8px;
-    padding: 10px; font-family: Consolas, "Courier New", monospace; font-size: 13.5px; line-height: 1.5; tab-size: 4;
-  }
-  .example-editor:focus { outline: none; border-color: #d4af37; }
-  .example-output {
-    background: #0a0906; border: 1px solid #3f341a; border-radius: 8px;
-    padding: 8px 12px; margin-top: 8px; min-height: 34px; max-height: 120px; overflow: auto;
-    font-family: Consolas, monospace; font-size: 13px; white-space: pre-wrap;
-  }
-  .example-output .err { color: #ff8f7a; }
+    .hero-art::after {
+      content: "";
+      position: absolute;
+      width: 128px;
+      height: 128px;
+      left: 8%;
+      bottom: 7%;
+      border-radius: 50%;
+      background: var(--coral);
+    }
 
-  /* key-point tables inside teaching panels */
-  table.keypoints { border-collapse: collapse; margin: 8px 0 14px; font-size: 14px; }
-  table.keypoints th, table.keypoints td { border: 1px solid #5a4a24; padding: 6px 16px; text-align: center; }
-  table.keypoints th { background: rgba(80, 62, 22, .4); color: #d4af37; }
-  table.keypoints code { color: #d9e6b0; font-family: Consolas, monospace; }
-  table.keypoints td code { background: rgba(217, 230, 176, .08); padding: 1px 6px; border-radius: 4px; }
+    .card-mark {
+      position: absolute;
+      z-index: 1;
+      inset: 34px 7% 16px 11%;
+      padding: 18px;
+      border: 2px solid var(--ink);
+      background: var(--panel);
+      box-shadow: 12px 13px 0 var(--teal);
+      transform: rotate(-4deg);
+    }
 
-  /* chamber review */
-  .review-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 9px 12px; border-bottom: 1px solid #3d3118; font-size: 14.5px;
-  }
-  .review-row .r-name { flex: 1; }
-  .review-row .r-ok { color: #8fe09c; } .review-row .r-no { color: #ff9d8a; }
-  .review-sub { background: rgba(70, 55, 18, .3); border-left: 4px solid #d4af37; padding: 10px 14px; margin: 12px 0; line-height: 1.8; font-size: 14px; }
-  .review-detail h3 { margin-top: 4px; }
-  .review-errors li { color: #ffb8a0; font-size: 13px; margin-left: 18px; }
+    .card-mark strong {
+      display: block;
+      margin-bottom: 12px;
+      font: 700 1.16rem Georgia, serif;
+    }
 
-  /* ============================ RESPONSIVE =========================== */
-  @media (max-width: 760px) {
-    #app { padding: 4px; }
-    #sprite-box img { height: 200px; }
-    #sprite-box { bottom: 130px; }
-    #dialogue-box { min-height: 120px; }
-    #dialogue-text { font-size: 14.5px; }
-    .overlay-panel { inset: 2% 3%; padding: 14px; }
-    #hud { flex-wrap: wrap; font-size: 13px; }
-    #hud-progress { min-width: 0; }
-  }
-</style>
+    .mini-bars {
+      display: grid;
+      gap: 8px;
+    }
+
+    .mini-bars span {
+      display: block;
+      height: 8px;
+      border-radius: 999px;
+      background: #d9efeb;
+    }
+
+    .mini-bars span:nth-child(1) { width: 95%; }
+    .mini-bars span:nth-child(2) { width: 86%; }
+    .mini-bars span:nth-child(3) { width: 70%; }
+    .mini-bars span:nth-child(4) { width: 80%; }
+
+    .section {
+      margin-bottom: 36px;
+      padding: 26px;
+      border: 1px solid var(--line);
+      background: rgba(255,253,248,.9);
+      box-shadow: var(--shadow);
+      scroll-margin-top: 86px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed var(--line);
+    }
+
+    .sub {
+      color: var(--muted);
+      font-size: .9rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(280px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .link-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 14px;
+      text-decoration: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+
+    .link-card:hover,
+    .link-card:focus {
+      transform: translateY(-2px);
+      border-color: var(--teal);
+      box-shadow: 0 8px 22px rgba(8,127,120,.15);
+      outline: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .title-wrap {
+      min-width: 0;
+    }
+
+    .title-wrap strong {
+      display: block;
+      font-size: 1rem;
+      line-height: 1.3;
+    }
+
+    .title-wrap small {
+      display: block;
+      color: var(--muted);
+      font-size: .8rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .03em;
+      border: 1px solid;
+      text-transform: uppercase;
+    }
+
+    .ready {
+      color: #0c5c3d;
+      background: #def7ea;
+      border-color: #9bd7b8;
+    }
+
+    .todo {
+      color: #8d6320;
+      background: #fff3d6;
+      border-color: #f0cd89;
+    }
+
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 16px;
+    }
+
+    .quick-links a {
+      text-decoration: none;
+      border: 1px solid var(--line);
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: var(--teal-dark);
+      background: #e1f1ed;
+      font-size: .82rem;
+      font-weight: 700;
+    }
+
+    .controls {
+      margin-top: 18px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .72);
+      box-shadow: var(--shadow);
+    }
+
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1.2fr auto auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .search {
+      width: 100%;
+      border: 1px solid #b9c6c2;
+      background: #fff;
+      color: var(--ink);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      border: 1px solid #b9c6c2;
+      background: #fff;
+      color: #35514f;
+      padding: 8px 10px;
+      font: inherit;
+      font-size: .84rem;
+      cursor: pointer;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+
+    .filter-btn.active {
+      border-color: var(--teal);
+      background: #dff1ec;
+      color: var(--teal-dark);
+    }
+
+    .results-line {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: .84rem;
+      font-weight: 700;
+    }
+
+    footer {
+      margin-top: 22px;
+      padding: 22px 0 45px;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      font-size: .86rem;
+      text-align: center;
+    }
+
+    .empty-message {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px dashed #c8c2b6;
+      color: #7b6f59;
+      background: #fff8e8;
+      font-size: .87rem;
+      display: none;
+    }
+
+    .empty-message.show {
+      display: block;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        padding-top: 44px;
+      }
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .control-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 540px) {
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .hero-art {
+        min-height: 196px;
+      }
+      .card-mark {
+        inset: 22px 2% 12px 7%;
+      }
+      .section {
+        padding: 17px;
+      }
+    }
+  </style>
 </head>
 <body>
+  <header class="topbar">
+    <div class="brand">F2 ICT T1</div>
+    <div class="count-pill" id="totalCount">20 Pages Linked</div>
+  </header>
 
-<!-- Pyodide runtime (real CPython compiled to WebAssembly) -->
-<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
-
-<!-- ======================= LOADING OVERLAY ======================= -->
-<div id="loading-overlay">
-  <div class="spinner"></div>
-  <div id="loading-msg">Summoning the Python spirit... Loading Python runtime</div>
-  <div id="loading-sub">First load takes roughly 10–30 s depending on your connection</div>
-  <button id="retry-load" class="btn hidden" onclick="bootPython()">Retry</button>
-</div>
-
-<div id="app">
-  <!-- ======================= HUD ======================= -->
-  <div id="hud">
-    <span class="title">The Code Trials</span>
-    <span id="hud-student"></span>
-    <span id="hud-scene"></span>
-    <span id="hud-challenge" class="badge-challenge hidden"></span>
-      <div id="hud-right">
-        <span id="conn-badge" class="badge-conn online">CLOUD</span>
-        <span id="hud-progress"></span>
-        <button class="btn-ghost btn hidden" id="btn-review" title="Revisit chambers you have completed">Review</button>
-        <button class="btn-ghost btn" id="btn-mute" title="Toggle sound">🔊</button>
-        <button class="btn-ghost btn" id="btn-stop" title="Save your progress and return to the menu">Stop</button>
-        <button class="btn-ghost btn hidden" id="btn-logout" title="Sign out and return to the sign-in tablet">Logout</button>
-      <button class="btn-ghost btn hidden" id="btn-restart" title="Restart the base trials (keeps your name)">Restart</button>
-      <button class="btn-exit btn hidden" id="btn-exit-challenge" title="Leave anytime — your progress is saved">Exit Challenge</button>
-    </div>
-  </div>
-
-  <!-- ======================= SCENE ======================= -->
-  <div id="scene">
-    <div id="bg-layer"></div>
-    <div id="sprite-box"></div>
-
-    <!-- name entry -->
-    <div id="name-panel" class="overlay-panel hidden">
-      <h2>The Sacred Trial · Sign-In Tablet</h2>
-      <div id="name-img-box"></div>
-      <p>The Serpent-Staff Priest hands you a stone tablet: "Mark your identity on it, and the trial gate shall open for you."</p>
-      <div class="panel-actions">
-        <select id="sel-grade" class="picker">
-          <option value="">Grade…</option>
-          <option value="F4">F4</option>
-          <option value="F5">F5</option>
-        </select>
-        <select id="sel-class" class="picker">
-          <option value="">Class…</option>
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-          <option value="D">D</option>
-        </select>
-        <select id="sel-num" class="picker">
-          <option value="">Class No.…</option>
-        </select>
-        <button id="btn-name-ok" class="btn btn-primary" disabled>Continue</button>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <div class="eyebrow">Course navigation</div>
+        <h1>F2 ICT T1</h1>
+        <p class="lead">Use this page as the central directory for your Excel class.<br> <strong>This site is for reference only, please follow the direct instructions from your ICT teacher in class!</strong></p>
+        <div class="quick-links">
+          <a href="#lesson-notes">Jump to lesson notes</a>
+          <a href="#exercises">Jump to exercises</a>
+        </div>
       </div>
-      <p id="name-hint" style="color:#c98; font-size:13px; margin-top:8px;"></p>
-    </div>
-
-    <!-- main menu -->
-    <div id="menu-panel" class="overlay-panel hidden">
-      <h2>Main Menu</h2>
-      <div id="menu-img-box"></div>
-      <button id="menu-base" class="btn menu-btn btn-primary">▶ The Four Trials
-        <small id="menu-base-sub">Variables · if/else &amp; while · operators · for loops — the base adventure</small>
-      </button>
-      <button id="menu-base-restart" class="btn btn-ghost hidden">↺ Start Over (replay from Chapter 1)</button>
-      <button id="menu-challenge" class="btn menu-btn btn-purple">★ The Abyssal Corridor
-        <small id="menu-challenge-sub">Challenge Mode — deeper trials of while, for, input() and nested loops</small>
-      </button>
-    </div>
-
-    <!-- challenge gate (Scene C0) -->
-    <div id="gate-panel" class="overlay-panel challenge-panel hidden">
-      <div id="gate-img-box"></div>
-      <p>"The trials are not over... Deep within these ruins lies a forgotten corridor — <b>the Abyssal Corridor</b>.
-         It seals away a far more powerful coding force, one that only true warriors dare to face."</p>
-      <p style="margin-top:8px;">"Will you accept the challenge? Fear not — you may leave at any time. I will not stop you."</p>
-      <p id="gate-progress" style="margin-top:10px;color:#d8c9ff;"></p>
-      <div id="gate-level-list" style="margin-top:12px;"></div>
-      <div class="panel-actions">
-        <button id="btn-gate-enter" class="btn btn-purple">Continue Next Lesson</button>
-        <button id="btn-gate-return" class="btn">Return</button>
+      <div class="hero-art" aria-hidden="true">
+        <div class="card-mark">
+          <strong>Course Progress Map</strong>
+          <div class="mini-bars">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- teaching point -->
-    <div id="teach-panel" class="overlay-panel hidden">
-      <div id="teach-img-box"></div>
-      <div id="teach-body"></div>
-      <div id="example-box" class="example-box"></div>
-      <div class="panel-actions">
-        <button id="btn-teach-ok" class="btn btn-primary">Got it — start the challenge!</button>
+    <section class="section" id="lesson-notes">
+      <div class="section-head">
+        <h2>Lesson Notes</h2>
+        <p class="sub" id="lessonCount">10 links</p>
       </div>
-    </div>
+      <p class="lead"></p>
 
-    <!-- task / code editor -->
-    <div id="task-panel" class="overlay-panel hidden">
-      <div id="task-img-box"></div>
-      <h3 id="task-title"></h3>
-      <div id="task-goal" class="task-goal"></div>
-      <textarea id="editor" spellcheck="false"></textarea>
-      <div class="panel-actions">
-        <button id="btn-run" class="btn" disabled>▶ Run Code</button>
-        <button id="btn-check" class="btn btn-primary" disabled>✓ Check Answer</button>
-        <button id="btn-task-teach" class="btn-ghost btn" type="button">← Back to lesson</button>
-        <span style="color:#8a7c5c;font-size:12px;">Tab = 4 spaces · Ctrl+Enter = Run</span>
-        <button id="btn-skip" class="btn-ghost btn hidden" style="margin-left:auto;">Skip (optional)</button>
+      <div class="grid">
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-01.html">
+          <span class="title-wrap">
+            <strong>Lesson 01 Note</strong>
+            <small>lesson-note-01.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-02.html">
+          <span class="title-wrap">
+            <strong>Lesson 02 Note</strong>
+            <small>lesson-note-02.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-03.html">
+          <span class="title-wrap">
+            <strong>Lesson 03 Note</strong>
+            <small>lesson-note-03.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-04.html">
+          <span class="title-wrap">
+            <strong>Lesson 04 Note</strong>
+            <small>lesson-note-04.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="ready" href="lesson-note-05.html">
+          <span class="title-wrap">
+            <strong>Lesson 05 Note</strong>
+            <small>lesson-note-05.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <!-- <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-06.html">
+          <span class="title-wrap">
+            <strong>Lesson 06 Note</strong>
+            <small>lesson-note-06.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-07.html">
+          <span class="title-wrap">
+            <strong>Lesson 07 Note</strong>
+            <small>lesson-note-07.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-08.html">
+          <span class="title-wrap">
+            <strong>Lesson 08 Note</strong>
+            <small>lesson-note-08.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-09.html">
+          <span class="title-wrap">
+            <strong>Lesson 09 Note</strong>
+            <small>lesson-note-09.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="lesson" data-status="pending" href="lesson-note-10.html">
+          <span class="title-wrap">
+            <strong>Lesson 10 Note</strong>
+            <small>lesson-note-10.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a> -->
       </div>
-      <pre id="output-pre"></pre>
-      <button id="btn-hint" class="btn btn-primary" type="button" style="margin-top:8px;">💡 Hint</button>
-      <div id="task-feedback" class="feedback"></div>
-    </div>
+      <p class="empty-message" id="lessonEmpty">No lesson note links match your current filter.</p>
+    </section>
 
-    <!-- ending summary (base game) -->
-    <div id="summary-panel" class="overlay-panel hidden">
-      <h2>Trials Complete · Learning Summary</h2>
-      <div id="summary-body"></div>
-      <div class="panel-actions">
-        <button id="btn-download" class="btn btn-primary">⬇ Download Progress JSON</button>
-        <button id="btn-summary-menu" class="btn">Return to Main Menu</button>
+    <section class="section" id="exercises">
+      <div class="section-head">
+        <h2>Exercises</h2>
+        <p class="sub" id="exerciseCount">10 links</p>
       </div>
-    </div>
+      <p class="lead"></p>
 
-    <!-- challenge complete (Scene C6) -->
-    <div id="chcomplete-panel" class="overlay-panel challenge-panel hidden">
-      <h2>Challenge Complete</h2>
-      <div id="chcomplete-body"></div>
-      <div class="panel-actions">
-        <button id="btn-download2" class="btn btn-purple">⬇ Download Progress JSON</button>
-        <button id="btn-chcomplete-menu" class="btn">Return to Main Menu</button>
+      <div class="grid">
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-1-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 01 Guide</strong>
+            <small>excel-exercise-1-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-2-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 02 Guide</strong>
+            <small>excel-exercise-2-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-3-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 03 Guide</strong>
+            <small>excel-exercise-3-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-4-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 04 Guide</strong>
+            <small>excel-exercise-4-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+<!--
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-5-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 05 Guide</strong>
+            <small>excel-exercise-5-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-6-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 06 Guide</strong>
+            <small>excel-exercise-6-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="ready" href="excel-exercise-7-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 07 Guide</strong>
+            <small>excel-exercise-7-guide.html</small>
+          </span>
+          <span class="badge ready">Ready</span>
+        </a>
+--!>
+        <!-- <a class="link-card" data-type="exercise" data-status="pending" href="excel-exercise-8-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 08 Guide</strong>
+            <small>excel-exercise-8-guide.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="pending" href="excel-exercise-9-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 09 Guide</strong>
+            <small>excel-exercise-9-guide.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a>
+
+        <a class="link-card" data-type="exercise" data-status="pending" href="excel-exercise-10-guide.html">
+          <span class="title-wrap">
+            <strong>Exercise 10 Guide</strong>
+            <small>excel-exercise-10-guide.html</small>
+          </span>
+          <span class="badge todo">Pending</span>
+        </a> -->
       </div>
-    </div>
+      <p class="empty-message" id="exerciseEmpty">No exercise links match your current filter.</p>
+    </section>
 
-    <!-- chamber review -->
-    <div id="review-panel" class="overlay-panel hidden">
-      <h2>Chamber Review</h2>
-      <p id="review-intro" style="margin-bottom:10px;">Revisit chambers you have completed — review the key points, replay the example, and check your own submission.</p>
-      <div id="review-list"></div>
-      <div id="review-detail" class="hidden"></div>
-      <div class="panel-actions">
-        <button id="btn-review-back" class="btn hidden">Back to list</button>
-        <button id="btn-review-close" class="btn">Close</button>
-      </div>
-    </div>
+    <footer>
+      &copy; 2026-2027 F2 ICT T1
+    </footer>
+  </main>
+  <script>
+    const cards = [...document.querySelectorAll('.link-card')];
+    const searchInput = document.querySelector('#searchInput');
+    const totalCount = document.querySelector('#totalCount');
+    const resultsLine = document.querySelector('#resultsLine');
+    const lessonCount = document.querySelector('#lessonCount');
+    const exerciseCount = document.querySelector('#exerciseCount');
+    const lessonEmpty = document.querySelector('#lessonEmpty');
+    const exerciseEmpty = document.querySelector('#exerciseEmpty');
 
-    <!-- dialogue -->
-    <div id="dialogue-box" class="hidden">
-      <div id="speaker"></div>
-      <div id="dialogue-text"></div>
-      <button id="next-btn">▼ Next</button>
-    </div>
+    let activeType = 'all';
+    let activeStatus = 'all';
 
-    <div id="door-flash"><img id="door-flash-img" alt="door"></div>
-    <div id="fade"></div>
-  </div>
-</div>
-
-<!-- placeholder background ambience (silent if the file is missing) -->
-<audio id="bgm" loop preload="none"></audio>
-
-<script>
-"use strict";
-/* ============================================================================
- * 1. CONFIG — the only section a teacher normally needs to edit
- * ==========================================================================*/
-
-/* Set to your deployed Cloudflare Worker URL, e.g. "https://ruins-trial-api.you.workers.dev".
-   Leave "" to run in OFFLINE MODE (records go to localStorage). */
-const API_BASE = location.protocol === "file:" ? "" : location.origin;
-
-const REQUIRED_TASK_COUNT = 8;   // base-game tasks counted for the progress %
-const CHALLENGE_TASK_COUNT = 5;  // challenge levels
-const RUN_TIMEOUT_S = 5.0;       // Python execution timeout (anti infinite-loop)
-const OUTPUT_LIMIT_CHARS = 200000;
-
-/* All media paths live here so they can be swapped without touching logic. */
-const ASSETS = {
-  images: {
-    // base game
-    entrance:        "images/background_entrance.png",
-    variableRoom:    "images/background_variable_room.png",
-    logicCorridor:   "images/background_logic_corridor.png",
-    operatorRoom:    "images/background_operator_room.png",
-    loopRoom:        "images/background_loop_room.png",
-    exit:            "images/background_exit.png",
-    priestIdle:      "images/priest_idle.png",
-    priestHappy:     "images/priest_happy.png",
-    priestWarning:   "images/priest_warning.png",
-    priestExplain:   "images/priest_explain.png",
-    teacher:         "images/teacher.png",
-    stoneSlab:       "images/stone_slab.png",
-    gearTrap:        "images/gear_trap.png",
-    papyrusScroll:   "images/papyrus_scroll.png",
-    doorClosed:      "images/stone_gate_closed.png",
-    doorOpen:        "images/stone_gate_opened.png",
-    runePedestal:    "images/rune_pedestal.png",
-    // challenge mode (new assets — graceful placeholders until the files exist)
-    challengeEntrance: "images/background_challenge_entrance.png",
-    echoGateBg:        "images/background_echo_gate.png",
-    endlessStairsBg:   "images/background_endless_stairs.png",
-    starAltarBg:       "images/background_star_altar.png",
-    twinTrialsBg:      "images/background_twin_trials.png",
-    abyssCoreBg:       "images/background_abyss_core.png",
-    gateEcho:          "images/gate_echo.png",
-    counterCrystal:    "images/counter_crystal.png",
-    starRing:          "images/star_ring.png",
-    statueHourglassScale:   "images/statue_hourglass_scale.png",
-    statueScale:       "images/statue_scale.png",
-    abyssCrystal:      "images/abyss_crystal.png",
-    effectPurpleGlow:  "images/effect_purple_glow.png",
-    iconChallenge:     "images/icon_challenge.png"
-  },
-  audio: {
-    success:         "audio/success.mp3",          // synthesized with WebAudio instead
-    error:           "audio/error.mp3",            // synthesized with WebAudio instead
-    openDoor:        "audio/open_door.mp3",        // synthesized with WebAudio instead
-    backgroundMusic: "audio/background_music.mp3"  // <audio> placeholder, silent if missing
-  }
-};
-
-/* localStorage keys for saved progress */
-const SAVE_KEYS = {
-  baseCompleted: "base_game_completed",   // legacy global flag (migrated into the per-student session on first login)
-  chUnlocked:    "challenge_unlocked",    // legacy global flag (same as above)
-  chProgress:    "challenge_progress",    // legacy global array (same as above)
-  chTeach:       "challenge_teach_progress", // legacy global array (same as above)
-  session:       "ruins_trial_session"    // legacy single-session key (pre per-student save)
-};
-/* Resume state is saved PER STUDENT, so re-logging in on a shared computer
-   brings each adventurer back to their own last stopping point. */
-const sessionKeyFor = (studentId) => `ruins_trial_session_${studentId}`;
-
-/* ============================================================================
- * 2. SMALL DOM HELPERS
- * ==========================================================================*/
-const $ = (sel) => document.querySelector(sel);
-const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
-const show = (el) => el.classList.remove("hidden");
-const hide = (el) => el.classList.add("hidden");
-const saveVal = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
-const loadVal = (k, dflt) => { try { const v = localStorage.getItem(k); return v === null ? dflt : JSON.parse(v); } catch (e) { return dflt; } };
-const clearVal = (k) => { try { localStorage.removeItem(k); } catch (e) {} };
-
-/* ============================================================================
- * 3. SOUND — WebAudio synthesized effects (no files needed).
- * ==========================================================================*/
-const SFX = {
-  ctx: null, muted: false,
-  ensure() {
-    if (!this.ctx) { try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
-    if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
-    return this.ctx;
-  },
-  tone(freq, dur, type = "sine", vol = 0.15, delay = 0) {
-    const c = this.ensure(); if (!c || this.muted) return;
-    const o = c.createOscillator(), g = c.createGain();
-    o.type = type; o.frequency.value = freq;
-    const t0 = c.currentTime + delay;
-    g.gain.setValueAtTime(vol, t0);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    o.connect(g).connect(c.destination);
-    o.start(t0); o.stop(t0 + dur + 0.05);
-  },
-  click()   { this.tone(700, 0.06, "square", 0.07); },
-  success() { this.tone(523, 0.12, "sine", 0.18); this.tone(659, 0.12, "sine", 0.18, 0.12); this.tone(784, 0.28, "sine", 0.18, 0.24); },
-  magic()   { this.tone(392, 0.12, "triangle", 0.16); this.tone(587, 0.12, "triangle", 0.16, 0.1); this.tone(880, 0.3, "triangle", 0.16, 0.2); },
-  error()   { this.tone(185, 0.22, "sawtooth", 0.13); this.tone(120, 0.3, "sawtooth", 0.13, 0.14); },
-  door()    { this.tone(90, 0.5, "triangle", 0.2); this.tone(58, 0.8, "triangle", 0.2, 0.22); }
-};
-
-/* Background ambience: pure placeholder — silently skipped if file missing. */
-(function initBGM() {
-  const bgm = $("#bgm");
-  bgm.src = ASSETS.audio.backgroundMusic;
-  bgm.volume = 0.25;
-  bgm.addEventListener("error", () => { bgm.remove(); });
-})();
-
-/* ============================================================================
- * 4. API LAYER — cloud first, localStorage simulated API as fallback.
- * ==========================================================================*/
-let apiAvailable = Boolean(API_BASE);
-const SIM_KEY = "ruinsTrialSimDB"; // shared with teacher.html via same origin
-
-function updateConnBadge() {
-  const b = $("#conn-badge");
-  if (apiAvailable) { b.textContent = "CLOUD"; b.className = "badge-conn online"; }
-  else { b.textContent = "Offline Mode - Progress saved locally"; b.className = "badge-conn offline"; }
-}
-
-function simRead() {
-  try { return JSON.parse(localStorage.getItem(SIM_KEY)) || { students: {} }; }
-  catch (e) { return { students: {} }; }
-}
-function simSubmit(payload) {
-  const db = simRead();
-  const stu = db.students[payload.student_id] || (db.students[payload.student_id] = { tasks: [] });
-  const key = payload.scene_id + "|" + payload.task_type;
-  stu.tasks = stu.tasks.filter(t => (t.scene_id + "|" + t.task_type) !== key);
-  stu.tasks.push(payload);
-  try { localStorage.setItem(SIM_KEY, JSON.stringify(db)); } catch (e) {}
-}
-
-/* Submit one task record. Always mirrors to localStorage as a backup. */
-async function submitRecord(payload) {
-  simSubmit(payload); // local backup always
-  if (!apiAvailable) return { success: true, mode: "local" };
-  try {
-    const r = await fetch(API_BASE + "/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return { success: true, mode: "cloud" };
-  } catch (e) {
-    apiAvailable = false;
-    updateConnBadge();
-    return { success: false, mode: "local" };
-  }
-}
-
-/* ============================================================================
- * 5. PYTHON ENGINE — runs student code in a Web Worker so the UI never
- *    freezes. Three anti-infinite-loop layers:
- *      (1) sys.settrace deadline guard inside Python (5 s)
- *      (2) stdout size cap (prevents memory blowups from print loops)
- *      (3) main-thread hard deadline: terminate + respawn the worker (8 s)
- *    A main-thread Pyodide fallback is provided for exotic browsers.
- * ==========================================================================*/
-const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/";
-
-/* Everything inside this function runs in the worker (stringified into a Blob). */
-function workerMain() {
-  const CDN = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/";
-  importScripts(CDN + "pyodide.js");
-
-  // Python helper defined once: timeout guard + output cap + simulated input()
-  const PY_RUNNER = `
-import sys, io, time, contextlib, builtins
-
-class _LimitedOut(io.StringIO):
-    def write(self, s):
-        if self.tell() > 200000:
-            raise RuntimeError("Output limit exceeded (more than 200,000 characters). Check your loop conditions!")
-        return io.StringIO.write(self, s)
-
-_INPUTS = []
-def _sim_input(prompt=""):
-    if _INPUTS:
-        return str(_INPUTS.pop(0))
-    raise RuntimeError("input() was called, but the simulated input list for this task is already empty.")
-
-def _run_student(code, inputs, timeout_s=5.0):
-    global _INPUTS
-    _INPUTS = list(inputs)
-    builtins.input = _sim_input
-    out_buf, err_buf = _LimitedOut(), io.StringIO()
-    deadline = time.time() + timeout_s
-    def _guard(frame, event, arg):
-        if time.time() > deadline:
-            raise TimeoutError("Execution timed out after %.1f seconds (possible infinite loop)." % timeout_s)
-        return _guard
-    sys.settrace(_guard)
-    try:
-        with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
-            exec(code, {"__name__": "__main__"})
-    except BaseException as exc:
-        err_buf.write(type(exc).__name__ + ": " + str(exc))
-    finally:
-        sys.settrace(None)
-    return out_buf.getvalue(), err_buf.getvalue()
-`;
-
-  let pyodide = null;
-  const ready = loadPyodide({ indexURL: CDN })
-    .then((py) => { pyodide = py; return py.runPythonAsync(PY_RUNNER); })
-    .then(() => self.postMessage({ type: "ready" }))
-    .catch((e) => self.postMessage({ type: "loadError", message: String(e && e.message || e) }));
-
-  self.onmessage = async (e) => {
-    const { id, code, inputs } = e.data;
-    try {
-      await ready;
-      pyodide.globals.set("_student_code", code);
-      pyodide.globals.set("_student_inputs", JSON.stringify(inputs || []));
-      await pyodide.runPythonAsync(
-        "import json as _json; _py_out, _py_err = _run_student(_student_code, _json.loads(_student_inputs))"
-      );
-      self.postMessage({
-        type: "result", id,
-        stdout: String(pyodide.globals.get("_py_out")),
-        stderr: String(pyodide.globals.get("_py_err"))
+    function setActiveButton(group, key, value) {
+      [...group.querySelectorAll('button')].forEach(button => {
+        button.classList.toggle('active', button.dataset[key] === value);
       });
-    } catch (err) {
-      self.postMessage({ type: "result", id, stdout: "", stderr: "RunnerError: " + (err && err.message || String(err)) });
     }
-  };
-}
 
-let pyWorker = null;
-let pyReady = false;
-let pyMode = "worker";     // "worker" | "main"
-let runSeq = 0;
-let pendingRun = null;     // { id, resolve, killTimer }
-
-function setLoadingText(main) {
-  $("#loading-msg").textContent = main;
-}
-
-/* Create (or re-create) the Python worker. */
-function spawnWorker() {
-  pyReady = false;
-  if (pyWorker) { try { pyWorker.terminate(); } catch (e) {} }
-  try {
-    const blob = new Blob(["(" + workerMain.toString() + ")()"], { type: "text/javascript" });
-    pyWorker = new Worker(URL.createObjectURL(blob));
-  } catch (e) {
-    startMainPyodide(); // no Worker support → main-thread fallback
-    return;
-  }
-  pyWorker.onmessage = (e) => {
-    const d = e.data;
-    if (d.type === "ready") {
-      pyReady = true;
-      hide($("#loading-overlay"));
-      onPythonReady();
-    } else if (d.type === "loadError") {
-      // CDN or worker failure → fall back to main-thread Pyodide
-      startMainPyodide(d.message);
-    } else if (d.type === "result" && pendingRun && d.id === pendingRun.id) {
-      clearTimeout(pendingRun.killTimer);
-      const resolve = pendingRun.resolve;
-      pendingRun = null;
-      resolve({ stdout: d.stdout, stderr: d.stderr });
+    function matchesFilters(card, term) {
+      const text = card.textContent.toLowerCase();
+      const typeOk = activeType === 'all' || card.dataset.type === activeType;
+      const statusOk = activeStatus === 'all' || card.dataset.status === activeStatus;
+      const searchOk = !term || text.includes(term);
+      return typeOk && statusOk && searchOk;
     }
-  };
-  pyWorker.onerror = () => startMainPyodide("Worker crashed");
-}
 
-/* Execute student code. Never blocks the UI for long, never throws. */
-function runStudentCode(code, inputs) {
-  if (!pyReady) return Promise.resolve({ stdout: "", stderr: "Python is still loading, please wait..." });
+    function updateIndex() {
+      const term = searchInput ? searchInput.value.trim().toLowerCase() : '';
+      let visibleTotal = 0;
+      let visibleLessons = 0;
+      let visibleExercises = 0;
 
-  if (pyMode === "worker" && pyWorker) {
-    // if a previous run somehow never answered, don't stack new ones
-    if (pendingRun) return Promise.resolve({ stdout: "", stderr: "RunnerError: another program is still running." });
-    return new Promise((resolve) => {
-      const id = ++runSeq;
-      pendingRun = {
-        id, resolve,
-        // layer 3: hard kill — the worker is stuck beyond its own 5 s guard
-        killTimer: setTimeout(() => {
-          pendingRun = null;
-          spawnWorker(); // terminate + respawn (worker reloads Pyodide from cache)
-          $("#loading-sub").textContent = "A stuck program was force-stopped. Python is restarting...";
-          resolve({ stdout: "", stderr: "TimeoutError: execution was terminated after 8 seconds (runaway infinite loop)." });
-        }, (RUN_TIMEOUT_S + 3) * 1000)
-      };
-      pyWorker.postMessage({ id, code, inputs: inputs || [] });
-    });
-  }
-
-  // main-thread fallback (settrace guard only; UI pauses during the run)
-  return (async () => {
-    if (!pyodideMain) return { stdout: "", stderr: "Python is not ready." };
-    try {
-      pyodideMain.globals.set("_student_code", code);
-      pyodideMain.globals.set("_student_inputs", JSON.stringify(inputs || []));
-      await pyodideMain.runPythonAsync(
-        "import json as _json; _py_out, _py_err = _run_student(_student_code, _json.loads(_student_inputs))"
-      );
-      return { stdout: String(pyodideMain.globals.get("_py_out")), stderr: String(pyodideMain.globals.get("_py_err")) };
-    } catch (e) {
-      return { stdout: "", stderr: "RunnerError: " + (e.message || String(e)) };
-    }
-  })();
-}
-
-/* ---- main-thread fallback engine (same Python helper, no Worker) ---- */
-let pyodideMain = null;
-const PY_RUNNER_MAIN = `
-import sys, io, time, contextlib, builtins
-class _LimitedOut(io.StringIO):
-    def write(self, s):
-        if self.tell() > ${OUTPUT_LIMIT_CHARS}:
-            raise RuntimeError("Output limit exceeded (more than ${OUTPUT_LIMIT_CHARS} characters). Check your loop conditions!")
-        return io.StringIO.write(self, s)
-_INPUTS = []
-def _sim_input(prompt=""):
-    if _INPUTS:
-        return str(_INPUTS.pop(0))
-    raise RuntimeError("input() was called, but the simulated input list for this task is already empty.")
-def _run_student(code, inputs, timeout_s=${RUN_TIMEOUT_S}):
-    global _INPUTS
-    _INPUTS = list(inputs)
-    builtins.input = _sim_input
-    out_buf, err_buf = _LimitedOut(), io.StringIO()
-    deadline = time.time() + timeout_s
-    def _guard(frame, event, arg):
-        if time.time() > deadline:
-            raise TimeoutError("Execution timed out after %.1f seconds (possible infinite loop)." % timeout_s)
-        return _guard
-    sys.settrace(_guard)
-    try:
-        with contextlib.redirect_stdout(out_buf), contextlib.redirect_stderr(err_buf):
-            exec(code, {"__name__": "__main__"})
-    except BaseException as exc:
-        err_buf.write(type(exc).__name__ + ": " + str(exc))
-    finally:
-        sys.settrace(None)
-    return out_buf.getvalue(), err_buf.getvalue()
-`;
-
-async function startMainPyodide(reason) {
-  pyMode = "main";
-  if (pyWorker) { try { pyWorker.terminate(); } catch (e) {} pyWorker = null; }
-  if (reason) console.warn("Falling back to main-thread Pyodide:", reason);
-  try {
-    if (typeof loadPyodide === "undefined") throw new Error("Pyodide script failed to load (check network / CDN).");
-    setLoadingText("Summoning the Python spirit... Loading Python runtime");
-    pyodideMain = await loadPyodide({ indexURL: PYODIDE_CDN });
-    await pyodideMain.runPythonAsync(PY_RUNNER_MAIN);
-    pyReady = true;
-    hide($("#loading-overlay"));
-    onPythonReady();
-  } catch (err) {
-    setLoadingText("Python failed to load: " + (err.message || err));
-    show($("#retry-load"));
-  }
-}
-
-/* Boot entry (also used by the Retry button). */
-function bootPython() {
-  hide($("#retry-load"));
-  setLoadingText("Summoning the Python spirit... Loading Python runtime");
-  spawnWorker();
-}
-
-/* Normalize output before comparison: ignore surrounding blanks / extra newlines. */
-function normalizeOutput(s) {
-  return String(s == null ? "" : s)
-    .replace(/\r\n/g, "\n")
-    .split("\n").map(l => l.replace(/\s+$/, "")).join("\n")
-    .replace(/\n+$/, "")
-    .trim();
-}
-const outputsMatch = (a, b) => normalizeOutput(a) === normalizeOutput(b);
-
-/* ============================================================================
- * 6. GAME STATE (global) + persistence
- * ==========================================================================*/
-const gameState = {
-  mode: "menu",              // "menu" | "base" | "challenge"
-  currentScene: "",
-  studentId: "",
-  steps: [],
-  stepIndex: 0,
-  records: {},               // key = scene_id|task_type -> latest record payload
-  instances: {},             // taskKey -> built instance
-  challengeProgress: [],     // completed challenge scene ids (loaded per student on login)
-  challengeTeachProgress: [],
-  baseCompleted: false,
-  timers: {},
-  challengeGateReturn: false
-};
-
-/* Read a saved session and normalise the "which run to resume" field.
-   runMode is null when the student was on the menu (nothing to resume). */
-function readSavedSession(studentId) {
-  const saved = studentId ? loadVal(sessionKeyFor(studentId), null) : null;
-  if (!saved || saved.studentId !== studentId) return null;
-  const rawMode = saved.runMode !== undefined ? saved.runMode : saved.mode; // "mode" = pre per-student format
-  saved.runMode = (rawMode === "base" || rawMode === "challenge") ? rawMode : null;
-  return saved;
-}
-
-function persistSessionState() {
-  if (!gameState.studentId) return;
-  let runMode = gameState.mode, stepIndex = gameState.stepIndex;
-  let instances = gameState.instances, currentTaskSaved = currentTask && currentTask.step ? {
-    taskKey: currentTask.step.taskKey || null,
-    challenge: !!currentTask.challenge,
-    editor: (typeof $("#editor") !== "undefined" && $("#editor")) ? $("#editor").value : "",
-    done: !!currentTask.done
-  } : null;
-
-  if (gameState.mode === "menu") {
-    // Browsing the menu (after Stop / at login) must NOT clobber the saved
-    // resume point — keep the previous run's mode + step so the player can
-    // continue where they stopped.
-    const prev = readSavedSession(gameState.studentId);
-    if (prev) {
-      runMode = prev.runMode;
-      stepIndex = Number.isInteger(prev.stepIndex) ? prev.stepIndex : 0;
-      instances = prev.instances || instances;
-      currentTaskSaved = prev.currentTask || null;
-    } else {
-      runMode = null;
-      stepIndex = 0;
-      currentTaskSaved = null;
-    }
-  }
-
-  saveVal(sessionKeyFor(gameState.studentId), {
-    studentId: gameState.studentId,
-    runMode,
-    stepIndex,
-    baseCompleted: gameState.baseCompleted,
-    challengeProgress: gameState.challengeProgress,
-    challengeTeachProgress: gameState.challengeTeachProgress,
-    records: gameState.records,
-    instances,
-    currentTask: currentTaskSaved
-  });
-}
-
-/* A task step whose record is already correct is skipped on resume, so a
-   player who stopped during a success dialogue doesn't have to redo it. */
-function taskRecordCorrect(step) {
-  if (!step || step.kind !== "task") return false;
-  const def = step.challenge ? CHALLENGE_TASKS[step.taskKey] : TASKS[step.taskKey];
-  const inst = gameState.instances[step.taskKey];
-  if (!def || !inst) return false;
-  const rec = gameState.records[def.sceneId + "|" + inst.taskType];
-  return !!(rec && rec.is_correct);
-}
-
-function applySavedStepIndex(saved) {
-  const idx = Number.isInteger(saved && saved.stepIndex) ? saved.stepIndex : 0;
-  gameState.stepIndex = Math.max(0, Math.min(idx, gameState.steps.length - 1));
-  let guard = 0;
-  while (guard++ < 50) {
-    const step = gameState.steps[gameState.stepIndex];
-    if (!step || step.kind !== "task" || !taskRecordCorrect(step)) break;
-    if (gameState.stepIndex >= gameState.steps.length - 1) break;
-    gameState.stepIndex++;
-  }
-  return gameState.stepIndex;
-}
-
-/* Drop the saved run (mode + step) so the next start begins from the prologue.
-   Records, instances and unlock flags are kept. */
-function clearRunResume() {
-  if (!gameState.studentId) return;
-  const prev = readSavedSession(gameState.studentId) || {
-    studentId: gameState.studentId,
-    records: gameState.records,
-    instances: gameState.instances,
-    baseCompleted: gameState.baseCompleted,
-    challengeProgress: gameState.challengeProgress,
-    challengeTeachProgress: gameState.challengeTeachProgress
-  };
-  prev.runMode = null;
-  prev.stepIndex = 0;
-  prev.currentTask = null;
-  saveVal(sessionKeyFor(gameState.studentId), prev);
-}
-
-/* Editor content to re-apply when resuming straight into a task (set by restoreSessionState). */
-let pendingEditorRestore = null;
-
-function findTeachStepForTask(taskKey, challenge) {
-  if (!taskKey || !gameState.steps || !gameState.steps.length) return -1;
-  return gameState.steps.findIndex(step => step.kind === "teach" && step.taskKey === taskKey && !!step.challenge === !!challenge);
-}
-
-function restoreSessionState() {
-  if (!gameState.studentId) return false;
-  let saved = readSavedSession(gameState.studentId);
-
-  if (!saved) {
-    // Legacy migration: the pre per-student save wrote ONE session key that is
-    // studentId-stamped, so it can be attributed safely. The old GLOBAL flags
-    // (base_game_completed etc.) are NOT migrated — they cannot be attributed
-    // to the student signing in and would leak across students on a shared browser.
-    const legacy = loadVal(SAVE_KEYS.session, null);
-    if (legacy && legacy.studentId === gameState.studentId) {
-      saved = legacy;
-    }
-  }
-  if (!saved) {
-    // No local session for this student — return false so the caller merges
-    // cloud progress FIRST and then renders the menu from the merged state.
-    return false;
-  }
-
-  gameState.records = Object.assign({}, saved.records || {}, loadVal("ruinsTrialRecords", {})[gameState.studentId] || {});
-  gameState.challengeProgress = Array.isArray(saved.challengeProgress) ? saved.challengeProgress : [];
-  gameState.challengeTeachProgress = Array.isArray(saved.challengeTeachProgress) ? saved.challengeTeachProgress : [];
-  gameState.baseCompleted = !!saved.baseCompleted;
-  // merge (not overwrite): instances rebuilt from the cloud merge must survive
-  gameState.instances = Object.assign({}, gameState.instances, saved.instances || {});
-
-  if (saved.runMode === "base") {
-    gameState.mode = "base";
-    buildBaseSteps();
-  } else if (saved.runMode === "challenge") {
-    // Re-login into a challenge run lands on the gate (free level selection),
-    // never force-resumes into a specific level.
-    gameState.mode = "challenge";
-    buildChallengeSteps();
-    gameState.stepIndex = 0;
-    renderStep();
-    return true;
-  } else {
-    // Session exists but no run to resume — caller shows the menu after merge.
-    return false;
-  }
-
-  applySavedStepIndex(saved);
-
-  // restore the in-progress editor content when resuming into a task step
-  const activeStep = gameState.steps[gameState.stepIndex];
-  const currentSaved = saved.currentTask;
-  if (activeStep && activeStep.kind === "task" && currentSaved && currentSaved.taskKey === activeStep.taskKey && !!currentSaved.challenge === !!activeStep.challenge) {
-    pendingEditorRestore = { taskKey: currentSaved.taskKey, challenge: !!currentSaved.challenge, editor: currentSaved.editor || "" };
-  }
-
-  renderStep();
-  return true;
-}
-
-function stopAndReturnToMenu() {
-  SFX.click();
-  persistSessionState();
-  showMenu();
-}
-
-function resetStudentSelectors() {
-  $("#sel-grade").value = "";
-  $("#sel-class").value = "";
-  $("#sel-num").value = "";
-  $("#name-hint").textContent = "";
-}
-
-function logoutStudent() {
-  SFX.click();
-  // Keep this student's saved session — logging back in resumes where they stopped.
-  persistSessionState();
-  currentTask = null;
-  pendingEditorRestore = null;
-  gameState.studentId = "";
-  gameState.mode = "menu";
-  gameState.currentScene = "";
-  gameState.steps = [];
-  gameState.stepIndex = 0;
-  gameState.records = {};
-  gameState.instances = {};
-  gameState.challengeGateReturn = false;
-  // fresh slate for the next student (their own state is restored on login)
-  gameState.challengeProgress = [];
-  gameState.challengeTeachProgress = [];
-  gameState.baseCompleted = false;
-  resetStudentSelectors();
-  setBackground("entrance");
-  setSprite("priestIdle");
-  $("#hud-scene").textContent = "Prologue · The Ruin Entrance";
-  updateHudMode();
-  hideAllPanels();
-  show($("#name-panel"));
-  putDecoImage("name-img-box", "doorClosed");
-  refreshNameBtn();
-}
-
-function isChallengeLevelUnlocked(key) {
-  const index = CHALLENGE_ORDER.indexOf(key);
-  if (index <= 0) return true;
-  return gameState.challengeProgress.includes(CHALLENGE_ORDER[index - 1]);
-}
-
-function markChallengeTeachSeen(key) {
-  if (!key || gameState.challengeTeachProgress.includes(key)) return;
-  gameState.challengeTeachProgress.push(key);
-  saveVal(SAVE_KEYS.chTeach, gameState.challengeTeachProgress);
-}
-
-function findChallengeStepIndex(taskKey, kind) {
-  return gameState.steps.findIndex(step => step.challenge && step.taskKey === taskKey && step.kind === kind);
-}
-
-function openChallengeSelection(taskKey, kind) {
-  const index = findChallengeStepIndex(taskKey, kind);
-  if (index === -1) return;
-  gameState.challengeGateReturn = true;
-  sceneTransition(() => {
-    gameState.stepIndex = index;
-    renderStep();
-  });
-}
-
-function renderChallengeGate() {
-  const progress = $("#gate-progress");
-  const list = $("#gate-level-list");
-  const cleared = gameState.challengeProgress.length;
-  const lessons = gameState.challengeTeachProgress.length;
-  progress.innerHTML = `Lessons viewed: <b>${lessons} / ${CHALLENGE_TASK_COUNT}</b> &nbsp;·&nbsp; Trials cleared: <b>${cleared} / ${CHALLENGE_TASK_COUNT}</b>`;
-  list.innerHTML = "";
-
-  for (const key of CHALLENGE_ORDER) {
-    const def = CHALLENGE_TASKS[key];
-    const unlocked = isChallengeLevelUnlocked(key);
-    const lessonDone = gameState.challengeTeachProgress.includes(key);
-    const taskDone = gameState.challengeProgress.includes(key);
-    const row = document.createElement("div");
-    row.className = "review-row";
-    row.style.alignItems = "center";
-    row.innerHTML = `<span class="r-name">${escapeHtml(def.title)}<br><span style="font-size:12px;color:#c8b6e8;">Lesson: ${lessonDone ? "Viewed" : "Not viewed"} · Trial: ${taskDone ? "Cleared" : "Not cleared"}</span></span>`;
-
-    const teachBtn = document.createElement("button");
-    teachBtn.className = "btn btn-purple";
-    teachBtn.textContent = lessonDone ? "Replay Lesson" : "Open Lesson";
-    teachBtn.disabled = !unlocked;
-    teachBtn.onclick = () => { SFX.click(); openChallengeSelection(key, "teach"); };
-
-    const taskBtn = document.createElement("button");
-    taskBtn.className = "btn btn-primary";
-    taskBtn.textContent = taskDone ? "Replay Trial" : "Open Trial";
-    taskBtn.disabled = !unlocked;
-    taskBtn.onclick = () => { SFX.click(); openChallengeSelection(key, "task"); };
-
-    row.appendChild(teachBtn);
-    row.appendChild(taskBtn);
-    list.appendChild(row);
-  }
-}
-
-/* ============================================================================
- * 7. TASK DEFINITIONS — each build() returns one randomized instance.
- *    Optional `inputs` = simulated values fed to input(), one per call.
- * ==========================================================================*/
-const urlVariant = new URLSearchParams(location.search).get("variant"); // ?variant=A|B|C
-
-const TASKS = {
-  variable: {
-    sceneId: "variable_room", column: "var", title: "The Variable Room · Fix the Slab",
-    teach: {
-      img: "stoneSlab",
-      html: `
-      <h3>The Variable Room · Key Points</h3>
-      <ul>
-        <li><b>Three rules of variable naming:</b> ① start with a letter or underscore _ ② only letters, digits and underscores ③ never use Python keywords (if, for, print...)</li>
-        <li><b>Data types:</b> numbers are written directly (16) — strings need quotes ("16") — booleans are capitalized (True / False)</li>
-        <li><b>Assignment direction:</b> the value on the right is stored into the variable on the left → x = 5</li>
-      </ul>`,
-      example: {
-        code: `name = "Explorer"      # a string wears quotes\nscore = 95             # a number does not\nis_ready = True        # a boolean is capitalized\nprint(name, score, is_ready)\nx = 5                  # the value on the RIGHT is stored into x\nx = x + 1              # right side is computed first, then stored back\nprint(x)`,
-        note: "Change the values and run it again — watch how the output follows the variables."
-      }
-    },
-    build() {
-      const v = (urlVariant && ["A", "B", "C"].includes(urlVariant)) ? urlVariant : pick(["A", "B", "C"]);
-      if (v === "A") return {
-        taskType: "A",
-        prompt: 'A variable <b>name</b> on this slab breaks a taboo. Fix it so the program prints <span class="target">Explorer</span>.',
-        starter: '1st_place = "Explorer"\nprint(1st_place)',
-        expected: "Explorer",
-        hint: "Variable names cannot start with a digit. Choose a legal name such as first_place (rename it in print as well)."
-      };
-      if (v === "B") return {
-        taskType: "B",
-        prompt: 'A <b>value</b> on this slab wears a mask that does not belong to it. Fix it so the program prints <span class="target">17</span>.',
-        starter: 'age = "16"\nprint(age + 1)',
-        expected: "17",
-        hint: "A string cannot be added to an integer — the two values must share the same data type. Look at the target output 17: does it wear quotes? What does that tell you about the value stored in age?"
-      };
-      return {
-        taskType: "C",
-        prompt: 'The equal sign on this slab faces the wrong way. Fix it so the program prints <span class="target">5</span>.',
-        starter: '5 = x\nprint(x)',
-        expected: "5",
-        hint: "The left side of = must be a variable; the right side is the value to store. Work out what x should be, then assign it properly."
-      };
-    }
-  },
-
-  if_else: {
-    sceneId: "logic_corridor", column: "if", title: "The Logic Corridor · Rune Gate",
-    teach: {
-      img: "stoneSlab",
-      html: `
-      <h3>The Rune Gate · if / else Key Points</h3>
-      <ul>
-        <li><b>Structure:</b> if condition: → indent 4 spaces → (optional) else: → indent 4 spaces</li>
-        <li>The colon and the indentation are mandatory Python syntax — miss one and the door stays shut</li>
-        <li>The condition is a <b>comparison</b> — it is either True or False:</li>
-      </ul>
-      <table class="keypoints">
-        <tr><th>Operator</th><th>Meaning</th><th>Example (energy = 50)</th><th>Result</th></tr>
-        <tr><td><code>&gt;</code></td><td>greater than</td><td><code>energy &gt; 50</code></td><td>False</td></tr>
-        <tr><td><code>&gt;=</code></td><td>greater than or equal</td><td><code>energy &gt;= 50</code></td><td>True</td></tr>
-        <tr><td><code>==</code></td><td>equal to</td><td><code>energy == 50</code></td><td>True</td></tr>
-        <tr><td><code>!=</code></td><td>not equal to</td><td><code>energy != 50</code></td><td>False</td></tr>
-        <tr><td><code>&lt;</code></td><td>less than</td><td><code>energy &lt; 50</code></td><td>False</td></tr>
-        <tr><td><code>&lt;=</code></td><td>less than or equal</td><td><code>energy &lt;= 50</code></td><td>True</td></tr>
-      </table>`,
-      example: {
-        code: `energy = 70\nif energy > 50:\n    print("OPEN")\nelse:\n    print("CLOSED")`,
-        note: "Change 70 to 30 and run again — which branch runs this time?"
-      }
-    },
-    build() {
-      const energy = pick([30, 50, 70]);
-      const expected = energy > 50 ? "OPEN" : "CLOSED";
-      return {
-        taskType: "if_else",
-        prompt: `The system has set energy = ${energy}. Write an if/else: when energy greater than 50 print <span class="target">OPEN</span>, otherwise print <span class="target">CLOSED</span>.`,
-        starter: `energy = ${energy}\n# Write your if / else below:\n`,
-        expected: expected,
-        hint: "The colons in 'if condition:' and 'else:' are mandatory, and the code under each must be indented by 4 spaces. Use the comparison table above to pick the right operator."
-      };
-    }
-  },
-
-  while: {
-    sceneId: "logic_corridor", column: "while", title: "The Logic Corridor · Gear Trap",
-    teach: {
-      img: "gearTrap",
-      html: `
-      <h3>The Gear Trap · while Loop Warnings</h3>
-      <ul>
-        <li><b>Structure:</b> while condition: → repeats the indented block for as long as the condition holds</li>
-        <li>You <b>must update the condition variable inside the loop</b> (e.g. count = count + 1), or the condition never becomes false → infinite loop</li>
-      </ul>`,
-      example: {
-        code: `count = 1\nwhile count <= 3:\n    print("Rotating...")\n    count = count + 1   # without this line, the loop never ends!\nprint("Stop")`,
-        note: "Comment out the count = count + 1 line and run — the system will stop it after 5 seconds. Put it back afterwards!"
-      }
-    },
-    build() {
-      const v = (urlVariant && ["A", "B", "C"].includes(urlVariant)) ? urlVariant : pick(["A", "B", "C"]);
-
-      // ---- Variant A: forward count (1 to n) ----
-      if (v === "A") {
-        const n = pick([3, 4, 5]);
-        let expected = "";
-        for (let i = 1; i <= n; i++) expected += `Step ${i}\n`;
-        expected += "Done";
-        return {
-          taskType: "while",
-          prompt: `The robot climbs stairs. Complete the while loop so it prints <span class="target">Step 1</span>, <span class="target">Step 2</span>, ... up to <span class="target">Step ${n}</span>, then prints <span class="target">Done</span>. Use a counter that starts at 1.`,
-          starter: `step = 1\nwhile step <= ${n}:\n    # print and increase step\n    pass\nprint("Done")`,
-          expected: expected,
-          hint: "Inside the loop: print(f'Step {step}') then step = step + 1. The final print is outside."
-        };
-      }
-
-      // ---- Variant B: backward countdown (n down to 1) ----
-      if (v === "B") {
-        const n = pick([3, 4, 5]);
-        let expected = "";
-        for (let i = n; i >= 1; i--) expected += `Countdown: ${i}\n`;
-        expected += "Liftoff!";
-        return {
-          taskType: "while",
-          prompt: `The rocket prepares for launch. Complete the while loop so it prints <span class="target">Countdown: n</span> from ${n} down to 1, then prints <span class="target">Liftoff!</span>. Use a counter that starts at ${n} and decreases.`,
-          starter: `count = ${n}\nwhile count ???:\n    # print and decrease count\n    pass\nprint("Liftoff!")`,
-          expected: expected,
-          hint: "Inside the loop: print(f'Countdown: {count}') then count = count - 1. The final print is outside."
-        };
-      }
-
-      // ---- Variant C: forward count from 0 to n-1 (using <) ----
-      const n = pick([3, 4, 5]);
-      let expected = "";
-      for (let i = 0; i < n; i++) expected += `Loop ${i}\n`;
-      expected += "Finished";
-      return {
-        taskType: "while",
-        prompt: `The oven preheats. Complete the while loop so it prints <span class="target">Loop 0</span>, <span class="target">Loop 1</span>, ... up to <span class="target">Loop ${n-1}</span>, then prints <span class="target">Finished</span>. Use a counter that starts at 0 and stops before reaching ${n}.`,
-        starter: `count = 0\nwhile count ???:\n    # print and increase count\n    pass\nprint("Finished")`,
-        expected: expected,
-        hint: "Inside the loop: print(f'Loop {count}') then count = count + 1. The condition checks count < n (so it runs n times)."
-      };
-    }
-  },
-
-  num_op: {
-    sceneId: "operator_room", column: "num", title: "The Operator Room · Number Runes",
-    teach: {
-      img: "stoneSlab",
-      html: `
-      <h3>The Operator Room · Key Points</h3>
-      <table class="keypoints">
-        <tr><th>Operator</th><th>Name</th><th>Example</th><th>Result</th></tr>
-        <tr><td><code>+</code></td><td>addition</td><td><code>7 + 2</code></td><td>9</td></tr>
-        <tr><td><code>-</code></td><td>subtraction</td><td><code>7 - 2</code></td><td>5</td></tr>
-        <tr><td><code>*</code></td><td>multiplication</td><td><code>7 * 2</code></td><td>14</td></tr>
-        <tr><td><code>/</code></td><td>division (decimal)</td><td><code>7 / 2</code></td><td>3.5</td></tr>
-        <tr><td><code>//</code></td><td>floor division (quotient)</td><td><code>7 // 2</code></td><td>3</td></tr>
-        <tr><td><code>%</code></td><td>modulo (remainder)</td><td><code>7 % 2</code></td><td>1</td></tr>
-        <tr><td><code>**</code></td><td>power</td><td><code>2 ** 3</code></td><td>8</td></tr>
-      </table>
-      <ul>
-        <li><b>String operations:</b> + joins strings — indexing [0] fetches a character, <b>counting starts at 0</b> — len() gives the length</li>
-        <li>String indexing is the gateway to next lesson's lists — remember it!</li>
-      </ul>`,
-      example: {
-        code: `print(7 + 2)\nprint(7 - 2)\nprint(7 * 2)\nprint(7 / 2)    # decimal division\nprint(7 // 2)   # quotient only\nprint(7 % 2)    # remainder only\nprint(2 ** 3)   # power`,
-        note: "Compare / and // carefully — what is the difference between their results?"
-      }
-    },
-    build() {
-      const q = pick([
-        { left: 7, right: 2, ans: "3" },
-        { left: 2, right: 3, ans: "8" },
-        { left: 10, right: 3, ans: "1" }
-      ]);
-      return {
-        taskType: "num_op",
-        prompt: `The rune stone shows the expression <span class="target">${q.left} ___ ${q.right}</span>. Choose the arithmetic operator that makes the program print <span class="target">${q.ans}</span>.`,
-        starter: `# Replace ___ with one arithmetic operator, then run and compare\nprint(${q.left} ___ ${q.right})`,
-        expected: q.ans,
-        hint: "Check the operator table above: // gives the quotient, % the remainder, ** the power. Try one, run it, and compare the output with the target answer."
-      };
-    }
-  },
-
-  str_op: {
-    sceneId: "operator_room", column: "str", title: "The Operator Room · Character Runes",
-    teach: {
-      img: "stoneSlab",
-      html: `
-      <h3>Character Runes · String Key Points</h3>
-      <ul>
-        <li><b>+ joins strings together</b>: "Code" + "Lab" → "CodeLab"</li>
-        <li><b>len( ) measures the length</b>: len("Python") → 6</li>
-        <li>Strings can be combined and measured — no brackets needed for these basics</li>
-      </ul>`,
-      example: {
-        code: `first = "Code"\nsecond = "Lab"\nfull = first + second\nprint(full)            # "CodeLab"\nprint(len(full))      # 7\nprint("Py" + "thon")  # "Python"\nprint(len("Python")) # 6`,
-        note: "Try joining different words with + and measuring their lengths with len(). Keep it simple — just strings and numbers."
-      }
-    },
-    build() {
-      const q = pick([
-        { prompt: 'The two word fragments must become one: print <span class="target">Adventurer</span>. Replace ? with the correct operator.', starter: 'print("Adven" ? "turer")', expected: "Adventurer", hint: "Which operator joins two strings into one? Try one, run it, and compare with the target word." },
-        { prompt: 'Print <b>how many characters</b> the word contains: <span class="target">5</span>. Replace ? with the right function.', starter: 'print(?("Staff"))', expected: "5", hint: "There is a built-in function that measures the length of a string — it was in the key points above." }
-      ]);
-      return { taskType: "str_op", prompt: q.prompt, starter: q.starter, expected: q.expected, hint: q.hint };
-    }
-  },
-
-  range: {
-    sceneId: "loop_room", column: "range", title: "The Loop Room · Complete the range",
-    teach: {
-      img: "runePedestal",
-      html: `
-      <h3>The Loop Room · for Loops in Detail (today's focus)</h3>
-      <ul>
-        <li><b>Syntax:</b> for variable in sequence: → indent 4 spaces; the variable takes each value of the sequence in turn</li>
-        <li><b>Three forms of range():</b><br>
-            　range(n) → 0, 1, ..., n-1<br>
-            　range(a, b) → a, ..., b-1 (the stop value b is <b>excluded</b>)<br>
-            　range(a, b, step) → step can be negative to count backwards</li>
-        <li><b>for vs while:</b> for suits a KNOWN number of repetitions; while suits unknown, condition-driven repetition</li>
-        <li><b>Strings are iterable:</b> for ch in "Staff": visits every character</li>
-      </ul>`,
-      example: {
-        code: `for i in range(4):\n    print(i)          # 0, 1, 2, 3 — four numbers, starting at 0`,
-        note: "Now try range(2, 6), then range(5, 0, -1) — predict the output before you run!"
-      }
-    },
-    build() {
-      const q = pick([
-        { desc: "0 1 2 3 (one per line)", expected: "0\n1\n2\n3", hint: "range(n) starts at 0 and stops just BEFORE n. How many numbers does the target list have?" },
-        { desc: "2 3 4 5 (one per line)", expected: "2\n3\n4\n5", hint: "range(a, b) starts at a and stops just BEFORE b. Which number does the target start with — and which number is missing at the end?" },
-        { desc: "5 4 3 2 1 (one per line, counting down!)", expected: "5\n4\n3\n2\n1", hint: "A negative step makes range() count DOWN. Where does it start, where does it stop — and is the stop value included?" }
-      ]);
-      return {
-        taskType: "range",
-        prompt: `Use a for loop + range() to print: <span class="target">${q.desc}</span>. Replace ___ with the correct range(...) call.`,
-        starter: "for i in ___:\n    print(i)",
-        expected: q.expected,
-        hint: q.hint + " ___ must become a full range(...) call — run and compare with the target!"
-      };
-    }
-  },
-
-  input_if: {
-    sceneId: "input_room",
-    column: "input",
-    title: "The Input Chamber · Read & Decide",
-    teach: {
-      img: "papyrusScroll",
-      html: `
-      <h3>Reading from the User · input()</h3>
-      <ul>
-        <li><b>input()</b> reads a line of text from the user (as a string).</li>
-        <li>Use <b>int(input())</b> to convert it to a number for comparison.</li>
-        <li>Combine with <b>if</b> / <b>elif</b> / <b>else</b> to react to the value.</li>
-      </ul>`,
-      example: {
-        code: `# Read a number and classify it\nnum = int(input())\nif num > 0:\n    print("Positive")\nelif num < 0:\n    print("Negative")\nelse:\n    print("Zero")`,
-        note: "The program waits for the user to type a number. Then it prints the correct label."
-      }
-    },
-    build() {
-      // Pick a random integer between -5 and 5 (inclusive)
-      const value = pick([-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]);
-      let expected;
-      if (value > 0) expected = "Positive";
-      else if (value < 0) expected = "Negative";
-      else expected = "Zero";
-
-      return {
-        taskType: "input_if",
-        prompt: `The program reads a number. For the value <span class="target">${value}</span>, write code that prints <span class="target">${expected}</span> (Positive, Negative, or Zero). Use input() and if/elif/else.`,
-        starter: `# Read the number from the user\nnum = ??(input())\n# Write your if/elif/else below:\n`,
-        expected: expected,
-        inputs: [String(value)],
-        hint: "Use `if num > 0:`, `elif num < 0:`, and `else:` with proper indentation. Don't forget to convert the input to an integer with `int()`."
-      };
-    }
-  },
-
-  adv_sum: { // optional bonus
-    sceneId: "loop_room", column: "bonus", title: "Advanced Challenge · The Sage's Sum",
-    optional: true,
-    teach: {
-      img: "stoneSlab",
-      html: `
-      <h3>The Sage's Sum · Accumulator Pattern</h3>
-      <ul>
-        <li>An <b>accumulator</b> is a variable that collects a running total — create it <b>before</b> the loop</li>
-        <li>Inside the loop, add each value to the accumulator</li>
-        <li>This pattern powers scores, counters and sums everywhere in programming</li>
-      </ul>`,
-      example: {
-        code: `total = 0\nfor n in range(1, 6):      # 1, 2, 3, 4, 5\n    total = total + n      # add each value to the running total\n    print("after adding", n, "total is", total)\nprint("final total:", total)`,
-        note: "Watch the running total grow line by line."
-      }
-    },
-    build() {
-      return {
-        taskType: "adv_sum",
-        prompt: `【Optional】Use a for loop to compute 1 + 2 + ... + 10 and print <span class="target">55</span>. Feeling bold? Also try printing a string backwards with a stepping range.`,
-        starter: `total = 0\nfor n in range(1, 11):\n    # add n to total here\n    pass\nprint(total)`,
-        expected: "55",
-        hint: "Inside the indented block, add the loop variable n to total. To reverse a string later, try a stepping range — the Sage believes in you!"
-      };
-    }
-  },
-
-  final: {
-    sceneId: "exit", column: "final", title: "Final Trial · Seal of Passage",
-    teach: {
-      img: "stoneSlab",
-      html: `
-      <h3>The Seal of Passage · Combining What You Know</h3>
-      <ul>
-        <li>range(3) produces exactly 3 values — perfect when the repetition count is known</li>
-        <li>The loop variable is not always needed; sometimes you just repeat an action</li>
-        <li>Everything inside the indented block is repeated; everything outside runs once</li>
-      </ul>`,
-      example: {
-        code: `for i in range(3):\n    print("Trial", i, "passed!")\n\nprint("This line runs only ONCE - it is outside the loop")`,
-        note: "Notice how the last print sits outside the loop and runs only once."
-      }
-    },
-    build() {
-      const name = "GoodBye" || "Explorer";
-      const expected = [name, name, name].join("\n");
-      return {
-        taskType: "final",
-        prompt: `Use a <b>for loop</b> to print <span class="target">${name}</span> exactly <span class="target">three times</span> — the seal of passage!`,
-        starter: `# Print your name 3 times using a for loop\n`,
-        expected: expected,
-        hint: "Loop three times with range(3), and print the word inside the loop (indented by 4 spaces)."
-      };
-    }
-  }
-};
-
-/* ---------------- Challenge Mode tasks (Scenes C1–C5) ---------------- */
-const CHALLENGE_TASKS = {
-  echo_gate: {
-    sceneId: "challenge_echo_gate", taskType: "string_concatenation",
-    title: "C1 · The Echo Gate",
-    teach: {
-      img: "gateEcho",
-      html: `
-      <h3>Before you code · Teacher's Note</h3>
-      <ul>
-        <li><b>input() always returns a string</b> — even if the user types numbers</li>
-        <li>Use <b>+</b> to concatenate strings, or f-strings for formatting</li>
-        <li>Choose meaningful variable names that follow the naming rules</li>
-      </ul>`,
-      example: {
-        code: `name = input()          # the next simulated value ("Ada") arrives here\nprint("Welcome, " + name + "!")`,
-        note: "Run it — the simulated value 'Ada' is fed into input(). Now add a second input() line and run again: the input list runs dry and you get a helpful error.",
-        inputs: ["Ada"]
-      }
-    },
-    build() {
-      return {
-        prompt: 'The gate demands three words (given to you as simulated input). Read them with input(), then combine them into the incantation <span class="target">Explorer-of-2025</span> — joined by dashes.',
-        starter: 'a = input()\nb = input()\nc = input()\nprint(a + b + c)   # BUG: the separator is missing — fix this',
-        expected: "Explorer-of-2025",
-        inputs: ["Explorer", "of", "2025"],
-        hint: "Look at the incantation carefully: what exactly sits BETWEEN the words? Make sure that character is printed between every pair of words."
-      };
-    },
-    successLine: "The three slots blaze with light and the Echo Gate grinds open.",
-    bg: "echoGateBg", item: "gateEcho", next: "challenge_endless_stairs"
-  },
-
-  endless_stairs: {
-    sceneId: "challenge_endless_stairs", taskType: "positive_stats",
-    title: "C2 · The Endless Staircase",
-    teach: {
-      img: "counterCrystal",
-      html: `
-      <h3>Before you code · Teacher's Note</h3>
-      <ul>
-        <li><b>while</b> loops are ideal when the repetition count is unknown</li>
-        <li>Initialize accumulator variables (count, total) <b>before</b> the loop</li>
-        <li>Use if conditions to filter out unwanted data</li>
-      </ul>`,
-      example: {
-        code: `num = int(input())\nwhile num != 0:          # 0 is the stop signal\n    print("Got:", num)\n    num = int(input())\nprint("Done")`,
-        note: "Run it — the values 5, -3, 9, 0 are fed in one by one. Watch how the loop ignores nothing yet; filtering is YOUR job in the trial.",
-        inputs: ["5", "-3", "9", "0"]
-      }
-    },
-    build() {
-      return {
-        prompt: 'The staircase produces integers until <span class="target">0</span> is entered. Count how many <b>positive</b> numbers appeared and their total sum, then print them as <span class="target">count sum</span> (e.g. <span class="target">2 17</span>). Negative numbers must be ignored — and your program must not crash.',
-        starter: 'count = 0\ntotal = 0\nnum = int(input())\nwhile num != 0:\n    if num > 0:\n    num = int(input())\nprint(count, total)',
-        expected: "2 17",
-        inputs: ["5", "-3", "12", "0"],
-        hint: "Negative numbers should not be added to the total. Check which lines are inside your if block — indentation decides what runs only for positive numbers."
-      };
-    },
-    successLine: "The staircase halts mid-step, and an exit shimmers into view.",
-    bg: "endlessStairsBg", item: "counterCrystal", next: "challenge_star_altar"
-  },
-
-  star_altar: {
-    sceneId: "challenge_star_altar", taskType: "star_triangle",
-    title: "C3 · The Star Altar",
-    img: "starRing",
-    teach: {
-      html: `
-      <h3>Before you code · Teacher's Note</h3>
-      <ul>
-        <li><b>for i in range(...)</b> controls how many times a loop repeats</li>
-        <li><b>Nested</b> for loops create two-dimensional patterns</li>
-        <li><b>print("*", end="")</b> stays on the same line; a bare print() breaks the line</li>
-      </ul>`,
-      example: {
-        code: `for i in range(1, 4):        # rows: 1, 2, 3\n    for j in range(i):       # stars in this row: i\n        print("*", end="")\n    print()                  # end the row`,
-        note: "The inner loop runs i times on row i. Change range(i) to range(3) and see how the shape breaks."
-      }
-    },
-    build() {
-      return {
-        prompt: 'Read a number N (simulated input), then use for loops to draw a right triangle of asterisks with N rows. For N = 4 the output must be:<br><span class="target">*<br>**<br>***<br>****</span>',
-        starter: 'n = int(input())\nfor i in range(n):\n    for j in range(n):  # BUG: every row prints the same number of stars\n        print("*", end="")\n    print()',
-        expected: "*\n**\n***\n****",
-        inputs: ["4"],
-        hint: "Each row should have the same number of stars as its row number. How does the row number relate to the inner loop's range?"
-      };
-    },
-    successLine: "The stars align into a perfect triangle and the altar awakens.",
-    bg: "starAltarBg", item: "starRing", next: "challenge_twin_trials"
-  },
-
-  twin_trials: {
-      sceneId: "challenge_twin_trials",
-      taskType: "fstring_formatting",
-      title: "C4 · The Twin Trials",
-      teach: {
-        img: "statueHourglassScale",
-        html: `
-        <h3>Before you code · Teacher's Note</h3>
-        <ul>
-          <li>F‑strings start with <b>f</b> before the opening quote</li>
-          <li>Put variable names inside <b>{curly braces}</b></li>
-          <li>Everything inside the braces is evaluated, then turned into text</li>
-          <li>Example: <code>f"Hello, {name}!"</code></li>
-        </ul>`,
-        example: {
-          code: 'item = "book"\nprice = 12.5\nquantity = 3\nprint(f"Buy {quantity} {item}s for ${price * quantity}")',
-          note: "The f‑string inserts values into the sentence. No .2f needed here — just put the variable directly inside the braces."
+      cards.forEach(card => {
+        const show = matchesFilters(card, term);
+        card.classList.toggle('hidden', !show);
+        if (show) {
+          visibleTotal += 1;
+          if (card.dataset.type === 'lesson') {
+            visibleLessons += 1;
+          } else if (card.dataset.type === 'exercise') {
+            visibleExercises += 1;
+          }
         }
-      },
-      build() {
-        return {
-          prompt: 'Read a name and a score, then use an <b>f-string</b> to print exactly:<br><span class="target">"&lt;name&gt; scored &lt;score&gt; points."</span><br>For inputs "Aria" and 87.5, output must be <span class="target">Aria scored 87.5 points.</span>',
-          starter: 'name = input()\nscore = float(input())\n# TODO: use an f-string to print "<name> scored <score> points."\npass',
-          expected: "Aria scored 87.5 points.",
-          inputs: ["Aria", "87.5"],
-          // 必须使用 f-string 且将变量 name 和 score 插入字符串中
-          codeMustContainAll: ['{name}', '{score}'],
-          hint: 'Use an f‑string — put the variable names inside curly braces, like f"{name} scored"'
-        };
-      },
-      successLine: "The statues' eyes light up, twin and true — the path opens.",
-      bg: "twinTrialsBg",
-      item: "statueHourglassScale",
-      next: "challenge_abyss_core"
-  },
-
-  abyss_core: {
-      sceneId: "challenge_abyss_core",
-      taskType: "number_pyramid",
-      title: "C5 · The Abyssal Core",
-      teach: {
-        img: "abyssCrystal",
-        html: `
-        <h3>Before you code · Teacher's Note</h3>
-        <ul>
-          <li>Nested loops: the <b>outer</b> loop controls rows, the <b>inner</b> loops control the content of each row.</li>
-          <li>Each row has three parts: <b>leading spaces</b>, <b>rising numbers</b>, and <b>falling numbers</b>.</li>
-          <li>Use <b>end=""</b> inside <code>print()</code> to stay on the same line.</li>
-          <li>To add a newline after finishing a row, call <code>print()</code> with no arguments.</li>
-        </ul>`,
-        example: {
-          code: `n = 3\nfor i in range(1, n + 1):\n    # 1) print leading spaces (no newline)\n    print(" " * (n - i), end="")\n\n    # 2) print rising numbers: 1, 2, ..., i (no newline)\n    for k in range(1, i + 1):\n        print(k, end="")\n\n    # 3) print falling numbers: i-1, ..., 1 (no newline)\n    for k in range(i - 1, 0, -1):\n        print(k, end="")\n\n    # 4) finally, move to the next line\n    print()`,
-          note: "Breaking the row into three parts makes it easier. Each part is printed with end=\"\", then a final print() starts a new line."
-        }
-      },
-      build() {
-        return {
-          prompt: 'Read N and print a number pyramid. For N = 5 (spaces must match exactly):<br><span class="target">&nbsp;&nbsp;&nbsp;&nbsp;5<br>&nbsp;&nbsp;&nbsp;565<br>&nbsp;&nbsp;56765<br>&nbsp;5678765<br>567898765</span>',
-          starter: 'n = int(input())\nfor i in range(1, n + 1):\n    # Step 1: print leading spaces (use end="")\n    # Step 2: print rising numbers (use end="")\n    # Step 3: print falling numbers (use end="")\n    # Step 4: print() to move to the next line\n    pass',
-          expected: "    5\n   565\n  56765\n 5678765\n567898765",
-          inputs: ["5"],
-          hint: "Print the spaces first with end=\"\", then the rising numbers with end=\"\", then the falling numbers with end=\"\". Finish the row with a bare print() to add a newline. Check the example above for the complete pattern."
-        };
-      },
-      successLine: "The crystal blazes white and settles — purified. The corridor seals itself behind you.",
-      bg: "abyssCoreBg",
-      item: "abyssCrystal",
-      next: null
-  }
-};
-const CHALLENGE_ORDER = ["echo_gate", "endless_stairs", "star_altar", "twin_trials", "abyss_core"];
-
-/* ============================================================================
- * 8. STORY STEPS
- * ==========================================================================*/
-function buildBaseSteps() {
-  const t = {};
-  for (const key of Object.keys(TASKS)) {
-    // Reuse the instance saved for this student so task variants (and their
-    // records / progress) stay consistent across Stop, logout and reload.
-    if (!gameState.instances[key]) gameState.instances[key] = TASKS[key].build();
-    t[key] = gameState.instances[key];
-  }
-
-  gameState.steps = [
-    { kind: "dialogue", bg: "entrance", sprite: "priestIdle", title: "Prologue · The Ruin Entrance", lines: [
-      { who: "Priest", text: "Whoever steps into this sacred trial must pass four chambers. Fail, and you shall be trapped here forever... Just kidding — the exhibition hall is simply locked, and your teacher is waiting outside." },
-      { who: "Priest", text: "I am the Serpent-Staff Priest, your proctor. Every chamber demands real code — its output decides your fate. Ready? Chamber one: the Variable Room." },
-      { who: "Priest", text: "The stone slabs carry corrupted 'names' and 'values'. Fix them so each program prints exactly the target output, and the door shall open." }
-    ]},
-
-    { kind: "teach", bg: "variableRoom", sprite: "priestExplain", title: "Chamber 1 · The Variable Room", taskKey: "variable" },
-
-    { kind: "task", taskKey: "variable", bg: "variableRoom", sprite: "priestIdle", title: "Chamber 1 · The Variable Room",
-      successLines: [{ who: "Priest", text: "The slab glows with golden light... You have understood the rules of variables. The door opens — on to the Logic Corridor." }] },
-
-    { kind: "teach", bg: "logicCorridor", sprite: "priestExplain", title: "Chamber 2 · The Logic Corridor", taskKey: "if_else" },
-
-    { kind: "task", taskKey: "if_else", bg: "logicCorridor", sprite: "priestIdle", title: "Chamber 2 · The Logic Corridor",
-      successLines: [{ who: "Priest", text: "The rune gate hums and slides open... but somewhere deeper, gears begin to grind." }] },
-
-    { kind: "teach", bg: "logicCorridor", sprite: "priestWarning", title: "Chamber 2 · The Gear Trap", taskKey: "while" },
-
-    { kind: "task", taskKey: "while", bg: "logicCorridor", sprite: "priestIdle", title: "Chamber 2 · The Gear Trap",
-      successLines: [{ who: "Priest", text: "The gears fall silent and the far door unlocks. Next: the Operator Room." }] },
-
-    { kind: "teach", bg: "operatorRoom", sprite: "priestExplain", title: "Chamber 3 · The Operator Room", taskKey: "num_op" },
-
-    { kind: "task", taskKey: "num_op", bg: "operatorRoom", sprite: "priestIdle", title: "Chamber 3 · The Operator Room",
-      successLines: [{ who: "Priest", text: "The number runes light up — correct. Now the character runes await your command." }] },
-
-    { kind: "task", taskKey: "str_op", bg: "operatorRoom", sprite: "priestIdle", title: "Chamber 3 · Character Runes",
-      successLines: [{ who: "Priest", text: "The words obey you... To the final chamber: the Loop Room." }] },
-
-    { kind: "teach", bg: "loopRoom", sprite: "priestExplain", title: "Chamber 4 · The Loop Room", taskKey: "range" },
-
-    { kind: "task", taskKey: "range", bg: "loopRoom", sprite: "priestIdle", title: "Chamber 4 · The Loop Room",
-      successLines: [{ who: "Priest", text: "The numbers flow in perfect order... The Seal of range is broken!" }] },
-
-    { kind: "teach", bg: "loopRoom", sprite: "priestExplain", title: "Chamber 4 · Read & Decide", taskKey: "input_if" },
-
-    {
-      kind: "task", taskKey: "input_if",  bg: "loopRoom",  sprite: "priestIdle", title: "Chamber 4 · Read & Decide",
-      successLines: [{ who: "Priest", text: "You have mastered `input()` and conditionals. The Sage will now test your logic with a more complex challenge — if you are prepared."}]},
-
-    { kind: "task", taskKey: "adv_sum", bg: "loopRoom", sprite: "priestExplain", title: "Advanced Challenge (optional)", optional: true,
-      successLines: [{ who: "Priest", text: "Remarkable! You have exceeded the demands of the trial." }],
-      skipLines: [{ who: "Priest", text: "No matter — the advanced challenge is for another day. Onward." }] },
-
-    { kind: "dialogue", bg: "exit", sprite: "priestHappy", title: "Epilogue · The Ruin Exit", lines: [
-      { who: "Priest", text: "Impossible... you have passed all four trials. Your code shall be carved upon the temple pillars, never to fade." },
-      { who: "Teacher", text: "Well done! I've been watching your progress from outside the door. One final task: print your own name three times with a for loop — the seal of passage!" }
-    ]},
-
-    { kind: "task", taskKey: "final", bg: "exit", sprite: "teacher", title: "Epilogue · Seal of Passage",
-      successLines: [{ who: "Teacher", text: "The seal is complete! Come, behold the record of your journey." }] },
-
-    { kind: "summary", bg: "exit", sprite: "priestHappy", title: "Trials Complete" }
-  ];
-}
-
-/* Challenge steps: gate (C0) -> first incomplete level onward -> completion (C6). */
-function buildChallengeSteps() {
-  // build a concrete instance of every challenge task (prompts/inputs/expected)
-  for (const key of CHALLENGE_ORDER) {
-    if (gameState.instances[key]) continue; // keep the student's saved variant
-    const def = CHALLENGE_TASKS[key];
-    // taskType lives on the definition — merge it into the instance for record payloads
-    gameState.instances[key] = Object.assign({ taskType: def.taskType }, def.build());
-  }
-  const steps = [{
-    kind: "chGate", bg: "challengeEntrance", sprite: "priestExplain",
-    title: "Challenge · The Abyssal Entrance", img: "effectPurpleGlow"
-  }];
-  for (const key of CHALLENGE_ORDER) {
-    const def = CHALLENGE_TASKS[key];
-    steps.push({ kind: "dialogue", bg: def.bg, sprite: "priestIdle", title: def.title, lines: challengeIntroLines(key) });
-    steps.push({ kind: "teach", bg: def.bg, sprite: "priestExplain", title: def.title, img: def.item, taskKey: key, challenge: true });
-    steps.push({ kind: "task", taskKey: key, challenge: true, bg: def.bg, sprite: "priestIdle", title: def.title,
-      successLines: [{ who: "Priest", text: def.successLine }] });
-  }
-  steps.push({ kind: "chComplete", bg: "exit", sprite: "priestHappy", title: "Challenge Complete" });
-  gameState.steps = steps;
-}
-
-function challengeIntroLines(key) {
-  const L = {
-    echo_gate: [
-      { who: "Priest", text: "The first trial: the Echo Gate. Three words are required to open it. You must ask the user for input, then combine them into a specific incantation." },
-      { who: "Priest", text: "Remember — everything from input() is a string. You must concatenate them correctly." }
-    ],
-    endless_stairs: [
-      { who: "Priest", text: "This staircase will keep producing numbers until you enter 0 to stop. You must count how many positive numbers appeared and their total sum." },
-      { who: "Priest", text: "Be careful — negative numbers should not be counted, but your program must not crash." }
-    ],
-    star_altar: [
-      { who: "Priest", text: "The third trial: the Star Altar. You must use a for loop to make the starlight trace a pattern. The slab shows the target shape — you must recreate it with code." },
-      { who: "Priest", text: "Remember — for loops are best for tasks with a known number of repetitions." }
-    ],
-    twin_trials: [
-      { who: "Priest", text: "The fourth trial: the Twin Trials. You must first use a while loop to receive N numbers, then use a for loop to calculate the sum of their squares." },
-      { who: "Priest", text: "This tests your ability to switch between both loop types." }
-    ],
-    abyss_core: [
-      { who: "Priest", text: "The final trial: the Abyssal Core. You must use nested for loops to output a number pyramid to purify the core." },
-      { who: "Priest", text: "This is the ultimate test of your loop mastery." }
-    ]
-  };
-  return L[key];
-}
-
-/* ============================================================================
- * 9. SCENE RENDERING (background / sprite / dialogue with typewriter)
- * ==========================================================================*/
-function setBackground(key) {
-  const src = ASSETS.images[key];
-  const bg = $("#bg-layer");
-  bg.classList.remove("bg-missing");
-  const probe = new Image();
-  probe.onload = () => { bg.style.backgroundImage = `url("${src}")`; };
-  probe.onerror = () => { bg.style.backgroundImage = "none"; bg.classList.add("bg-missing"); bg.dataset.label = "Missing image: " + key; };
-  probe.src = src;
-}
-
-function setSprite(key) {
-  const box = $("#sprite-box");
-  const src = ASSETS.images[key];
-  box.innerHTML = "";
-  if (!src) return;
-  const img = document.createElement("img");
-  img.alt = key;
-  img.onerror = () => { box.innerHTML = `<div class="img-missing" style="width:170px;height:250px;">Missing image:<br>${key}</div>`; };
-  img.src = src;
-  box.appendChild(img);
-  box.classList.remove("pop"); void box.offsetWidth; box.classList.add("pop");
-}
-
-function putDecoImage(containerId, key) {
-  const box = $("#" + containerId);
-  box.innerHTML = "";
-  if (!key) return;
-  const src = ASSETS.images[key];
-  const img = document.createElement("img");
-  img.className = "deco-img"; img.alt = key;
-  img.onerror = () => { box.innerHTML = `<div class="img-missing deco-img">Missing image: ${key}</div>`; };
-  img.src = src;
-  box.appendChild(img);
-}
-
-/* Tab inserts 4 spaces in any editor element; Ctrl+Enter runs its Run button. */
-function attachTabIndent(ed, runFn) {
-  ed.addEventListener("keydown", (e) => {
-    if (e.key === "Tab") {
-      e.preventDefault();
-      const s = ed.selectionStart, t = ed.selectionEnd;
-      ed.value = ed.value.slice(0, s) + "    " + ed.value.slice(t);
-      ed.selectionStart = ed.selectionEnd = s + 4;
-    } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && runFn) {
-      e.preventDefault(); runFn();
-    }
-  });
-}
-
-/* Mount a runnable example (mini editor + Run button + output) into a container.
-   Used by teach panels AND the chamber review detail view. */
-function mountExample(container, example) {
-  container.innerHTML = "";
-  if (!example || !example.code) { container.classList.add("hidden"); return; }
-  container.classList.remove("hidden");
-
-  const h = document.createElement("h4");
-  h.textContent = "▶ Runnable Example — try it yourself (teacher demo)";
-  container.appendChild(h);
-
-  if (example.note) {
-    const note = document.createElement("div");
-    note.className = "example-note";
-    note.textContent = "💡 " + example.note;
-    container.appendChild(note);
-  }
-
-  const ed = document.createElement("textarea");
-  ed.className = "example-editor";
-  ed.value = example.code;
-  ed.spellcheck = false;
-  container.appendChild(ed);
-  attachTabIndent(ed, null);
-
-  const actions = document.createElement("div");
-  actions.className = "panel-actions";
-  const btn = document.createElement("button");
-  btn.className = "btn";
-  btn.textContent = "▶ Run Example";
-  if (example.inputs && example.inputs.length) {
-    const tag = document.createElement("span");
-    tag.style.cssText = "color:#b8e0ff;font-size:12px;";
-    tag.textContent = "Simulated input: " + example.inputs.join(", ");
-    actions.appendChild(tag);
-  }
-  actions.appendChild(btn);
-  container.appendChild(actions);
-
-  const out = document.createElement("pre");
-  out.className = "example-output";
-  out.textContent = "(output will appear here)";
-  container.appendChild(out);
-
-  btn.onclick = async () => {
-    SFX.click();
-    btn.disabled = true;
-    out.textContent = "Running...";
-    const res = await runStudentCode(ed.value, example.inputs || []);
-    out.textContent = "";
-    if (res.stdout) out.textContent += res.stdout;
-    if (res.stderr) out.innerHTML += `<span class="err">${escapeHtml(res.stderr)}</span>`;
-    if (!res.stdout && !res.stderr) out.textContent = "(no output)";
-    btn.disabled = false;
-  };
-}
-
-/* Typewriter dialogue. onDone fires after the LAST line is dismissed. */
-let typeTimer = null;
-function showDialogueLines(lines, onDone) {
-  ["#name-panel", "#menu-panel", "#gate-panel", "#teach-panel", "#task-panel", "#summary-panel", "#chcomplete-panel"]
-    .forEach(s => hide($(s)));
-  show($("#dialogue-box"));
-  let i = 0;
-  const textEl = $("#dialogue-text"), speakerEl = $("#speaker"), nextBtn = $("#next-btn");
-
-  function typeLine() {
-    const line = lines[i];
-    speakerEl.textContent = line.who;
-    textEl.textContent = "";
-    clearInterval(typeTimer);
-    let pos = 0;
-    typeTimer = setInterval(() => {
-      pos++;
-      textEl.textContent = line.text.slice(0, pos);
-      if (pos >= line.text.length) clearInterval(typeTimer);
-    }, 24);
-  }
-
-  nextBtn.onclick = () => {
-    SFX.click();
-    const line = lines[i];
-    if (textEl.textContent.length < line.text.length) {   // still typing → reveal all
-      clearInterval(typeTimer); textEl.textContent = line.text; return;
-    }
-    i++;
-    if (i < lines.length) typeLine();
-    else { hide($("#dialogue-box")); if (onDone) onDone(); }
-  };
-  typeLine();
-}
-
-function sceneTransition(fn) {
-  const fade = $("#fade");
-  fade.classList.add("on");
-  setTimeout(() => { fn(); fade.classList.remove("on"); }, 480);
-}
-
-/* ============================================================================
- * 10. STEP ENGINE
- * ==========================================================================*/
-const ALL_PANELS = ["#name-panel", "#menu-panel", "#gate-panel", "#teach-panel", "#task-panel", "#summary-panel", "#chcomplete-panel", "#review-panel", "#dialogue-box"];
-function hideAllPanels() { ALL_PANELS.forEach(s => hide($(s))); }
-
-function hasAnyReviewRecord() {
-  for (const entry of reviewEntries()) {
-    const rec = gameState.records[recordKeyFor(entry)];
-    if (rec) return true;
-  }
-  return false;
-}
-
-function updateHudMode() {
-  const isCh = gameState.mode === "challenge";
-  $("#btn-restart").classList.toggle("hidden", gameState.mode !== "base");
-  $("#btn-exit-challenge").classList.toggle("hidden", !isCh);
-  $("#hud-challenge").classList.toggle("hidden", !isCh);
-  $("#btn-review").classList.toggle("hidden", !hasAnyReviewRecord());
-  $("#btn-logout").classList.toggle("hidden", !gameState.studentId);
-  if (isCh) {
-    $("#hud-challenge").textContent = `Abyssal Corridor ${gameState.challengeProgress.length} / ${CHALLENGE_TASK_COUNT}`;
-    $("#hud-progress").textContent = "";
-  } else {
-    const n = requiredCorrectCount();
-    $("#hud-progress").textContent = gameState.mode === "base" ? `${n} / ${REQUIRED_TASK_COUNT}  (${Math.round(n / REQUIRED_TASK_COUNT * 100)}%)` : "";
-  }
-  $("#hud-student").textContent = gameState.studentId ? "🜲 " + gameState.studentId : "";
-}
-
-function requiredCorrectCount() {
-  let n = 0;
-  for (const key of Object.keys(TASKS)) {
-    const def = TASKS[key];
-    if (def.optional) continue;
-    const inst = gameState.instances[key];
-    if (!inst) continue; // task instances may not be built yet (e.g. on the main menu)
-    const rec = gameState.records[def.sceneId + "|" + inst.taskType];
-    if (rec && rec.is_correct) n++;
-  }
-  return n;
-}
-
-function renderStep() {
-  const step = gameState.steps[gameState.stepIndex];
-  if (!step) return;
-  gameState.currentScene = step.title || "";
-  if (step.bg) setBackground(step.bg);
-  if (step.sprite) setSprite(step.sprite);
-  $("#hud-scene").textContent = step.title || "";
-  updateHudMode();
-
-  if (step.kind === "dialogue") {
-    hideAllPanels();
-    showDialogueLines(step.lines, nextStep);
-
-  } else if (step.kind === "teach") {
-    hideAllPanels();
-    const panel = $("#teach-panel");
-    panel.classList.toggle("challenge-panel", !!step.challenge);
-    const teach = step.challenge ? CHALLENGE_TASKS[step.taskKey].teach : TASKS[step.taskKey].teach;
-    if (step.challenge) markChallengeTeachSeen(step.taskKey);
-    show(panel);
-    putDecoImage("teach-img-box", teach.img || "stoneSlab");
-    $("#teach-body").innerHTML = teach.html;
-    mountExample($("#example-box"), teach.example);
-    $("#btn-teach-ok").onclick = () => { SFX.click(); nextStep(); };
-
-  } else if (step.kind === "chGate") {
-    hideAllPanels(); show($("#gate-panel"));
-    putDecoImage("gate-img-box", step.img || "gateEcho");
-    renderChallengeGate();
-
-  } else if (step.kind === "task") {
-    openTask(step);
-
-  } else if (step.kind === "summary") {
-    hideAllPanels(); show($("#summary-panel"));
-    saveVal(SAVE_KEYS.baseCompleted, true);
-    saveVal(SAVE_KEYS.chUnlocked, true);
-    gameState.baseCompleted = true;
-    renderSummary();
-    // The run is finished — clear the resume point (menu shows a fresh start).
-    clearRunResume();
-    return;
-
-  } else if (step.kind === "chComplete") {
-    hideAllPanels(); show($("#chcomplete-panel"));
-    $("#chcomplete-body").innerHTML = `
-      <p>"You have conquered the Abyssal Corridor. Your coding power now surpasses that of ordinary mortals. Remember — true strength knows when to rest." <i>— Priest</i></p>
-      <p style="margin-top:10px;">"Outstanding work! The Challenge Mode is no easy feat, yet you completed it. You can review your progress or try again anytime." <i>— Teacher</i></p>
-      <p style="margin-top:10px;">Challenge levels completed: <b style="color:#c9a6ff">${gameState.challengeProgress.length} / ${CHALLENGE_TASK_COUNT}</b></p>`;
-  }
-
-  persistSessionState();
-}
-
-function nextStep() { gameState.stepIndex++; renderStep(); }
-
-/* ============================================================================
- * 11. TASK PANEL — editor, run, check, records
- * ==========================================================================*/
-let currentTask = null; // { step, def, inst, attempts, errors[], startTime, runSubmitted, done }
-
-function openTask(step) {
-  hideAllPanels();
-  const isChallenge = !!step.challenge;
-  const def = isChallenge ? CHALLENGE_TASKS[step.taskKey] : TASKS[step.taskKey];
-  const inst = gameState.instances[step.taskKey];
-  currentTask = { step, def, inst, attempts: 0, errors: [], startTime: Date.now(), runSubmitted: false, done: false, challenge: isChallenge };
-
-  const panel = $("#task-panel");
-  panel.classList.toggle("challenge-panel", isChallenge);
-  show(panel);
-  const taskImage = isChallenge ? def.item : (def.teach && def.teach.img) || "stoneSlab";
-  putDecoImage("task-img-box", taskImage);
-  $("#task-title").textContent = def.title + (def.optional ? " (optional)" : "");
-  const inputsNote = inst.inputs && inst.inputs.length
-    ? `<br><span class="inputs">Simulated input (each value feeds one input() call): ${inst.inputs.join(", ")}</span>` : "";
-  $("#task-goal").innerHTML = inst.prompt + inputsNote +
-    `<br>Target output: <span class="target">${escapeHtml(inst.expected).replace(/\n/g, " ⏎ ")}</span>`;
-  $("#editor").value = inst.starter;
-  if (pendingEditorRestore && pendingEditorRestore.taskKey === step.taskKey && pendingEditorRestore.challenge === isChallenge && pendingEditorRestore.editor) {
-    $("#editor").value = pendingEditorRestore.editor;
-  }
-  pendingEditorRestore = null;
-  $("#output-pre").textContent = "(program output will appear here)";
-  const fb = $("#task-feedback"); fb.className = "feedback"; fb.textContent = "";
-  panel.classList.remove("glow");
-  const skip = $("#btn-skip");
-  if (def.optional) show(skip); else hide(skip);
-  skip.onclick = () => {
-    SFX.click();
-    showDialogueLines(step.skipLines || [{ who: "Priest", text: "No matter — onward." }], nextStep);
-  };
-  $("#btn-task-teach").onclick = () => {
-    SFX.click();
-    const teachIndex = findTeachStepForTask(step.taskKey, isChallenge);
-    if (teachIndex !== -1) {
-      gameState.stepIndex = teachIndex;
-      renderStep();
-      return;
-    }
-    renderStep();
-  };
-  const hintBtn = $("#btn-hint");
-  hintBtn.disabled = !inst || !inst.hint;
-  hintBtn.onclick = () => {
-    SFX.click();
-    const fb = $("#task-feedback");
-    fb.className = "feedback info";
-    fb.textContent = "💡 Hint: " + (inst.hint || "No hint available for this task.");
-  };
-  refreshTaskButtons();
-  persistSessionState();
-}
-
-function refreshTaskButtons() {
-  const active = pyReady && currentTask && !currentTask.done;
-  $("#btn-run").disabled = !active;
-  $("#btn-check").disabled = !active;
-}
-
-/* Tab inserts 4 spaces; Ctrl+Enter runs. */
-$("#editor").addEventListener("keydown", (e) => {
-  if (e.key === "Tab") {
-    e.preventDefault();
-    const ed = e.target, s = ed.selectionStart, t = ed.selectionEnd;
-    ed.value = ed.value.slice(0, s) + "    " + ed.value.slice(t);
-    ed.selectionStart = ed.selectionEnd = s + 4;
-  } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault(); onRun();
-  }
-});
-$("#editor").addEventListener("input", () => {
-  if (currentTask) persistSessionState();
-});
-
-/* Build + submit the record payload (spec-defined shape). */
-function makePayload(correct, actualOut) {
-  const { def, inst } = currentTask;
-  const key = def.sceneId + "|" + inst.taskType;
-  const rec = gameState.records[key] || (gameState.records[key] = {
-    student_id: gameState.studentId, scene_id: def.sceneId, task_type: inst.taskType,
-    attempts: 0, error_messages: []
-  });
-  rec.student_code = $("#editor").value;
-  rec.expected_output = inst.expected;
-  rec.actual_output = actualOut == null ? "" : actualOut;
-  rec.is_correct = correct;
-  rec.attempts = correct ? Math.max(rec.attempts, currentTask.attempts) : currentTask.attempts;
-  rec.time_spent_seconds = Math.round((Date.now() - currentTask.startTime) / 1000);
-  rec.error_messages = Array.from(new Set(currentTask.errors)).slice(-5); // deduplicated
-  rec.timestamp = new Date().toISOString();
-  persistRecords();
-  submitRecord(Object.assign({}, rec));
-  return rec;
-}
-
-/* Persist this student's records locally so the Chamber Review survives reloads. */
-function persistRecords() {
-  if (!gameState.studentId) return;
-  const all = loadVal("ruinsTrialRecords", {});
-  all[gameState.studentId] = gameState.records;
-  try { localStorage.setItem("ruinsTrialRecords", JSON.stringify(all)); } catch (e) {}
-}
-
-/* "▶ Run Code" — run only, show stdout/stderr. First run marks the task as "attempting". */
-async function onRun() {
-  if (!currentTask || currentTask.done) return;
-  SFX.click();
-  $("#btn-run").disabled = true; $("#btn-check").disabled = true;
-  $("#output-pre").textContent = "Running...";
-  const res = await runStudentCode($("#editor").value, currentTask.inst.inputs || []);
-  showRunResult(res);
-  if (res.stderr) currentTask.errors.push(res.stderr.trim()); // every run error is kept for analysis
-  if (!currentTask.runSubmitted) {
-    currentTask.runSubmitted = true;
-    const { def, inst } = currentTask;
-    submitRecord({
-      student_id: gameState.studentId, scene_id: def.sceneId, task_type: inst.taskType,
-      student_code: $("#editor").value, expected_output: inst.expected, actual_output: "",
-      is_correct: false, attempts: 0, time_spent_seconds: 0,
-      error_messages: [], timestamp: new Date().toISOString()
-    });
-  }
-  refreshTaskButtons();
-}
-
-/* "✓ Check Answer" — run + compare + record + branch. */
-async function onCheck() {
-  if (!currentTask || currentTask.done) return;
-  SFX.click();
-  $("#btn-run").disabled = true;
-  $("#btn-check").disabled = true;
-
-  // 执行学生代码，传入预设的输入
-  const res = await runStudentCode($("#editor").value, currentTask.inst.inputs || []);
-  showRunResult(res);
-
-  const { def, inst } = currentTask;
-  const studentCode = $("#editor").value;
-
-  // ========== 代码技术检查 ==========
-  let codeOk = true;
-  // 如果定义了 codeMustContainAll，则每个模式都必须出现
-  if (inst.codeMustContainAll) {
-    codeOk = inst.codeMustContainAll.every(pat => studentCode.includes(pat));
-  }
-  // 如果定义了 codeMustContain，则至少出现其中一个模式
-  else if (inst.codeMustContain) {
-    codeOk = inst.codeMustContain.some(pat => studentCode.includes(pat));
-  }
-
-  // 判定是否完全正确：无错误、代码技术正确、输出匹配
-  const ok = !res.stderr && codeOk && outputsMatch(inst.expected, res.stdout);
-
-  currentTask.attempts++;
-  const fb = $("#task-feedback");
-
-  if (ok) {
-    // ========== 成功分支 ==========
-    currentTask.done = true;
-    if (res.stderr) currentTask.errors.push(res.stderr.trim());
-    makePayload(true, res.stdout);
-
-    if (currentTask.challenge) {
-      // 保存挑战模式进度（与 CHALLENGE_ORDER 对应）
-      const chKey = currentTask.step.taskKey;
-      if (!gameState.challengeProgress.includes(chKey)) {
-        gameState.challengeProgress.push(chKey);
-        saveVal(SAVE_KEYS.chProgress, gameState.challengeProgress);
-      }
+      });
+
+      if (totalCount) totalCount.textContent = `${visibleTotal} of ${cards.length} Pages Visible`;
+      lessonCount.textContent = `${visibleLessons} visible`;
+      exerciseCount.textContent = `${visibleExercises} visible`;
+      if (resultsLine) resultsLine.textContent = `Showing ${visibleTotal} of ${cards.length} links`;
+
+      lessonEmpty.classList.toggle('show', visibleLessons === 0);
+      exerciseEmpty.classList.toggle('show', visibleExercises === 0);
     }
 
-    SFX.success();
-    fb.className = "feedback ok";
-    fb.textContent = "✓ Correct! The ancient stone glows...";
-    $("#task-panel").classList.add("glow");
-    setSprite("priestHappy");
-    updateHudMode();
+    const typeFilters = document.querySelector('#typeFilters');
+    const statusFilters = document.querySelector('#statusFilters');
 
-    // 开门闪光效果，随后显示成功对话并进入下一步
-    const flash = $("#door-flash");
-    const doorImg = $("#door-flash-img");
-    doorImg.style.display = "";
-    doorImg.src = ASSETS.images.doorOpen;
-    doorImg.onerror = () => { flash.style.display = "none"; afterDoor(); };
-    flash.style.display = "flex";
-    SFX.door();
-
-    setTimeout(() => {
-      flash.style.display = "none";
-      afterDoor();
-    }, 1400);
-
-    function afterDoor() {
-      const lines = currentTask.step.successLines || [
-        { who: "Priest", text: "Well done. The trial is passed." }
-      ];
-      // 处理挑战模式中“大门返回”的特殊逻辑
-      if (currentTask.challenge && gameState.challengeGateReturn) {
-        showDialogueLines(lines, () => {
-          gameState.challengeGateReturn = false;
-          gameState.stepIndex = 0;
-          renderStep();
-        });
-        return;
-      }
-      showDialogueLines(lines, nextStep);
-    }
-  } else {
-    // ========== 失败分支 ==========
-    if (res.stderr) {
-      // 情况1：程序运行错误
-      currentTask.errors.push(res.stderr.trim());
-    } else if (!codeOk) {
-      // 情况2：输出正确但未使用要求的技术
-      currentTask.errors.push(
-        "TechniqueNotUsed: " +
-        (inst.codeMustContainAll || inst.codeMustContain || []).join(" and ")
-      );
-    } else {
-      // 情况3：输出不匹配
-      currentTask.errors.push(
-        "WrongOutput: expected [" + normalizeOutput(inst.expected) +
-        "] got [" + normalizeOutput(res.stdout) + "]"
-      );
+    if (typeFilters) {
+      typeFilters.addEventListener('click', event => {
+        const button = event.target.closest('button[data-type]');
+        if (!button) return;
+        activeType = button.dataset.type;
+        setActiveButton(typeFilters, 'type', activeType);
+        updateIndex();
+      });
     }
 
-    makePayload(false, res.stdout);
-    SFX.error();
-    fb.className = "feedback bad";
-
-    // 根据具体错误类型显示不同的反馈信息
-    if (res.stderr) {
-      fb.innerHTML =
-        `✗ Not correct yet (attempt #${currentTask.attempts})<br>` +
-        "⚠ Your program raised an error: " + escapeHtml(res.stderr.split("\n").pop()) + "<br>" +
-        "💡 Hint: " + escapeHtml(inst.hint);
-    } else if (!codeOk) {
-      fb.innerHTML =
-        `✗ Not correct yet (attempt #${currentTask.attempts})<br>` +
-        "⚠ Your output looks right, but you didn't use the required technique correctly.<br>" +
-        "💡 Hint: " + escapeHtml(inst.hint);
-    } else {
-      fb.innerHTML =
-        `✗ Not correct yet (attempt #${currentTask.attempts})<br>` +
-        "The output does not match the target. Check it again.<br>" +
-        "💡 Hint: " + escapeHtml(inst.hint);
+    if (statusFilters) {
+      statusFilters.addEventListener('click', event => {
+        const button = event.target.closest('button[data-status]');
+        if (!button) return;
+        activeStatus = button.dataset.status;
+        setActiveButton(statusFilters, 'status', activeStatus);
+        updateIndex();
+      });
     }
 
-    setSprite("priestWarning");
-    refreshTaskButtons();
-    updateHudMode();
-  }
-}
-
-function showRunResult(res) {
-  const out = $("#output-pre");
-  out.textContent = "";
-  if (res.stdout) out.textContent += res.stdout;
-  if (res.stderr) out.innerHTML += `<span class="err">${escapeHtml(res.stderr)}</span>`;
-  if (!res.stdout && !res.stderr) out.textContent = "(no output)";
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-/* ============================================================================
- * 12. MAIN MENU / SUMMARY / DOWNLOAD / NAVIGATION
- * ==========================================================================*/
-function showMenu() {
-  gameState.mode = "menu";
-  setBackground("entrance");
-  setSprite("priestIdle");
-  $("#hud-scene").textContent = "Main Menu";
-  hideAllPanels();
-  const menu = $("#menu-panel");
-  menu.classList.remove("challenge-panel");
-  show(menu);
-  putDecoImage("menu-img-box", "entrance");
-
-  const unlocked = gameState.baseCompleted;
-  const chBtn = $("#menu-challenge"), sub = $("#menu-challenge-sub");
-  chBtn.classList.toggle("locked", !unlocked);
-  chBtn.disabled = !unlocked;
-  chBtn.title = unlocked ? "" : "Complete the base trials first";
-  const done = gameState.challengeProgress.length;
-  sub.textContent = unlocked
-    ? `Challenge Mode — choose your next trial at the gate · ${done} / ${CHALLENGE_TASK_COUNT} levels completed`
-    : "Challenge Mode — locked: complete the base trials first";
-
-  // If a base run is in progress, the big button continues it instead of restarting.
-  const resumable = readSavedSession(gameState.studentId);
-  const resumingBase = resumable && resumable.runMode === "base" && Number.isInteger(resumable.stepIndex) && resumable.stepIndex > 0;
-  const baseBtn = $("#menu-base"), baseSub = $("#menu-base-sub");
-  baseBtn.innerHTML = resumingBase
-    ? `▶ Continue the Trials<small id="menu-base-sub">Resume from where you stopped — or press "Start Over" to replay from Chapter 1</small>`
-    : `▶ The Four Trials<small id="menu-base-sub">Variables · if/else &amp; while · operators · for loops — the base adventure</small>`;
-  $("#menu-base-restart").classList.toggle("hidden", !resumingBase);
-  updateHudMode();
-  persistSessionState();
-}
-
-function startBaseGame() {
-  gameState.mode = "base";
-  sceneTransition(() => {
-    buildBaseSteps();
-    // Resume this student's saved base run (if any) instead of restarting.
-    const saved = readSavedSession(gameState.studentId);
-    applySavedStepIndex(saved && saved.runMode === "base" ? saved : null);
-    renderStep();
-  });
-}
-
-function startChallenge() {
-  gameState.mode = "challenge";
-  sceneTransition(() => {
-    gameState.challengeGateReturn = false;
-    buildChallengeSteps();
-    // The Abyssal Corridor always opens at the gate — the free level-selection
-    // hub — so players can pick any unlocked level (the gate itself tracks
-    // lesson/trial progress per level).
-    gameState.stepIndex = 0;
-    renderStep();
-  });
-}
-
-/* Exit Challenge: save (already saved per level) and go back to the menu. */
-$("#btn-exit-challenge").onclick = () => {
-  SFX.click();
-  saveVal(SAVE_KEYS.chProgress, gameState.challengeProgress);
-  saveVal(SAVE_KEYS.chTeach, gameState.challengeTeachProgress);
-  showMenu();
-};
-
-/* Restart base trials: reset progress but KEEP the student name. */
-$("#btn-restart").onclick = () => {
-  SFX.click();
-  if (!confirm("Restarting will clear this run's chamber progress (your name is kept). Continue?")) return;
-  clearRunResume();
-  sceneTransition(startBaseGame);
-};
-
-function renderSummary() {
-  const body = $("#summary-body");
-  let rows = "", correct = 0, totalSec = 0;
-  const order = ["variable", "if_else", "while", "num_op", "str_op", "range", "input_if", "final", "adv_sum"];
-  for (const key of order) {
-    const def = TASKS[key], inst = gameState.instances[key];
-    const rec = gameState.records[def.sceneId + "|" + inst.taskType];
-    const name = def.title.replace(/ ·.*/, "");
-    if (!rec) {
-      rows += `<tr><td>${name}${def.optional ? " (optional)" : ""}</td><td class="st-no">— not finished</td><td>0</td><td>0s</td></tr>`;
-    } else {
-      totalSec += rec.time_spent_seconds || 0;
-      if (rec.is_correct && !def.optional) correct++; // bonus does not count toward the required percentage
-      const cls = def.optional ? "st-bonus" : (rec.is_correct ? "st-ok" : "st-no");
-      const mark = def.optional ? (rec.is_correct ? "★ bonus complete" : "— not attempted") : (rec.is_correct ? "✓ correct" : "✗ not passed");
-      rows += `<tr><td>${name}</td><td class="${cls}">${mark}</td><td>${rec.attempts}</td><td>${rec.time_spent_seconds}s</td></tr>`;
-    }
-  }
-  const pct = Math.round(correct / REQUIRED_TASK_COUNT * 100);
-  body.innerHTML = `
-    <p>Adventurer <b style="color:#ffd968">${escapeHtml(gameState.studentId)}</b>, congratulations on passing the trials of the ancient ruins! Your records have been ${apiAvailable ? "uploaded to the cloud in real time" : "saved on this computer (Offline Mode)"} — you can still download a backup.</p>
-    <table id="summary-table">
-      <tr><th>Task</th><th>Result</th><th>Attempts</th><th>Time</th></tr>
-      ${rows}
-    </table>
-    <p>Overall completion: <b style="color:#d4af37">${correct} / ${REQUIRED_TASK_COUNT} (${pct}%)</b>　Total time: about ${Math.round(totalSec / 60)} min</p>
-    <p style="color:#c9a6ff;">★ New: The Abyssal Corridor (Challenge Mode) has been unlocked on the Main Menu!</p>`;
-}
-
-/* Download the full learning history as JSON (works with or without cloud). */
-function downloadHistory() {
-  const data = {
-    student_id: gameState.studentId,
-    exported_at: new Date().toISOString(),
-    api_available: apiAvailable,
-    base_completed: gameState.baseCompleted,
-    challenge_progress: gameState.challengeProgress,
-    tasks: Object.values(gameState.records)
-  };
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `learning-history-${gameState.studentId || "student"}.json`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-$("#btn-download").onclick = downloadHistory;
-$("#btn-download2").onclick = downloadHistory;
-$("#btn-summary-menu").onclick = () => { SFX.click(); showMenu(); };
-$("#btn-chcomplete-menu").onclick = () => { SFX.click(); showMenu(); };
-
-$("#btn-mute").onclick = () => {
-  SFX.muted = !SFX.muted;
-  $("#btn-mute").textContent = SFX.muted ? "🔇" : "🔊";
-};
-$("#btn-stop").onclick = stopAndReturnToMenu;
-$("#btn-logout").onclick = logoutStudent;
-
-/* ============================================================================
- * 12b. CHAMBER REVIEW — students revisit completed chambers: key points,
- *      the runnable example again, and their own submission record.
- * ==========================================================================*/
-function reviewEntries() {
-  const entries = [];
-  const baseOrder = ["variable", "if_else", "while", "num_op", "str_op", "range", "input_if", "final", "adv_sum"];
-  for (const key of baseOrder) {
-    const def = TASKS[key];
-    entries.push({ key, def, challenge: false, teach: def.teach, title: def.title });
-  }
-  for (const key of CHALLENGE_ORDER) {
-    const def = CHALLENGE_TASKS[key];
-    entries.push({ key, def, challenge: true, teach: def.teach, title: def.title });
-  }
-  return entries;
-}
-
-function recordKeyFor(entry) {
-  const inst = gameState.instances[entry.key];
-  const taskType = (inst && inst.taskType) || entry.def.taskType;
-  return entry.def.sceneId + "|" + taskType;
-}
-
-function openReview() {
-  SFX.click();
-  hideAllPanels();
-  show($("#review-panel"));
-  show($("#review-list"));
-  hide($("#review-detail"));
-  hide($("#btn-review-back"));
-  const list = $("#review-list");
-  list.innerHTML = "";
-  let any = false;
-  for (const entry of reviewEntries()) {
-    const rec = gameState.records[recordKeyFor(entry)];
-    const row = document.createElement("div");
-    row.className = "review-row";
-    const status = rec
-      ? (rec.is_correct ? `<span class="r-ok">✓</span>` : `<span class="r-no">✗ ${rec.attempts}</span>`)
-      : `<span style="color:#8a7c5c">—</span>`;
-    const viewBtn = document.createElement("button");
-    viewBtn.className = "btn-ghost btn";
-    viewBtn.textContent = "View";
-    viewBtn.disabled = !rec;
-    viewBtn.onclick = () => { SFX.click(); showReviewDetail(entry, rec); };
-    row.innerHTML = `<span>${status}</span><span class="r-name">${escapeHtml(entry.title)}${entry.challenge ? " ★" : ""}</span>`;
-    row.appendChild(viewBtn);
-    list.appendChild(row);
-    if (rec) any = true;
-  }
-  $("#review-intro").textContent = any
-    ? "Revisit chambers you have completed — review the key points, replay the example, and check your own submission."
-    : "Nothing to review yet — complete a chamber first, then come back here.";
-}
-
-function showReviewDetail(entry, rec) {
-  hide($("#review-list"));
-  show($("#btn-review-back"));
-  const detail = $("#review-detail");
-  detail.classList.remove("hidden");
-  detail.classList.toggle("challenge-panel", entry.challenge);
-  const teach = entry.teach || { html: "<p>(No key points recorded for this chamber.)</p>" };
-
-  let submission = "";
-  if (rec) {
-    const errs = (rec.error_messages || []).map(e => `<li>${escapeHtml(e)}</li>`).join("");
-    submission = `
-      <h3 style="margin-top:16px;">Your Submission</h3>
-      <div class="review-sub">
-        Result: <b class="${rec.is_correct ? "st-ok" : "st-no"}">${rec.is_correct ? "✓ Correct" : "✗ Not passed"}</b>
-        　·　Attempts: <b>${rec.attempts}</b>
-        　·　Time: <b>${rec.time_spent_seconds}s</b>
-        　·　Target output: <code style="color:#ffd968">${escapeHtml(rec.expected_output || "").replace(/\n/g, " ⏎ ")}</code><br>
-        Your output: <code style="color:#b8e0ff">${escapeHtml(rec.actual_output || "").replace(/\n/g, " ⏎ ") || "(empty)"}</code>
-        ${errs ? `<br>Errors recorded:<ul class="review-errors">${errs}</ul>` : ""}
-      </div>
-      <textarea class="example-editor" readonly style="height:150px;">${escapeHtml(rec.student_code || "")}</textarea>`;
-  }
-
-  detail.innerHTML = `<h3>${escapeHtml(entry.title)}</h3>${teach.html}
-    <div class="example-box" id="review-example-box"></div>
-    ${submission}`;
-
-  // runnable example inside the review view (fresh mount so both can coexist)
-  const box = detail.querySelector("#review-example-box");
-  mountExample(box, teach.example);
-}
-
-$("#btn-review").onclick = openReview;
-$("#btn-review-back").onclick = () => { SFX.click(); openReview(); };
-$("#btn-review-close").onclick = () => { SFX.click(); showMenu(); };
-
-/* ============================================================================
- * 13. STUDENT IDENTITY (pickers) + MENU WIRING + BOOT
- * ==========================================================================*/
-/* Fill the class-number dropdown with 1–40 */
-(function initPickers() {
-  const selNum = $("#sel-num");
-  for (let i = 1; i <= 40; i++) {
-    const opt = document.createElement("option");
-    opt.value = String(i); opt.textContent = String(i);
-    selNum.appendChild(opt);
-  }
-})();
-
-/* The student id is the combination of the three pickers, e.g. "F4A-12".
-   It is NOT persisted — students choose it again on every visit. */
-function selectedStudentId() {
-  const g = $("#sel-grade").value, c = $("#sel-class").value, n = $("#sel-num").value;
-  return (g && c && n) ? `${g}${c}-${n}` : "";
-}
-function refreshNameBtn() { $("#btn-name-ok").disabled = !selectedStudentId(); }
-["#sel-grade", "#sel-class", "#sel-num"].forEach(s => $(s).addEventListener("change", () => { SFX.click(); refreshNameBtn(); }));
-
-/* ---------------- Cloud progress restore ----------------------------------
-   Students move between computers, so on login we merge their submitted
-   records from the Worker (the same data teacher.html shows) into the local
-   state: Review history, task variants, base completion and challenge
-   unlocks all follow the student instead of the browser. */
-async function fetchCloudRecords(studentId) {
-  if (!apiAvailable || !studentId) return null;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 6000);
-  try {
-    const r = await fetch(API_BASE + "/progress?student_id=" + encodeURIComponent(studentId), { signal: ctrl.signal });
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    const data = await r.json();
-    return Array.isArray(data.tasks) ? data.tasks : [];
-  } catch (e) {
-    return null; // offline / old worker — keep local-only behaviour
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/* All task_type values a task definition can generate (its variants). */
-function variantTypesOf(def) {
-  const types = new Set();
-  for (let i = 0; i < 15; i++) {
-    const t = def.build().taskType;
-    if (t) types.add(t);
-  }
-  return [...types];
-}
-
-/* Build a task instance whose variant (taskType) matches the student's cloud
-   history, so restored records line up with the chamber they were earned in. */
-function buildInstanceMatching(def, wantType) {
-  if (!wantType) return def.build();
-  for (let i = 0; i < 25; i++) {
-    const inst = def.build();
-    if (inst.taskType === wantType) return inst;
-  }
-  return def.build();
-}
-
-function mergeCloudProgress(cloudTasks) {
-  // snapshot of records that already existed locally (before merging)
-  const localOnly = Object.assign({}, gameState.records);
-
-  for (const rec of cloudTasks) {
-    if (!rec || !rec.scene_id || !rec.task_type) continue;
-    const key = rec.scene_id + "|" + rec.task_type;
-    const cur = gameState.records[key];
-    if (!cur || String(rec.timestamp || "") > String(cur.timestamp || "")) gameState.records[key] = rec;
-  }
-
-  // base tasks: keep the local variant when this browser already has history
-  // for the chamber; otherwise adopt the variant recorded in the cloud.
-  for (const key of Object.keys(TASKS)) {
-    const def = TASKS[key];
-    const types = variantTypesOf(def);
-    const inst = gameState.instances[key];
-    const localHas = types.some(t => localOnly[def.sceneId + "|" + t]);
-    if (localHas) continue;
-    const cloudRecs = Object.values(gameState.records)
-      .filter(r => r.scene_id === def.sceneId && types.includes(r.task_type))
-      .sort((a, b) => String(a.timestamp || "") < String(b.timestamp || "") ? 1 : -1);
-    if (cloudRecs.length) {
-      const want = cloudRecs[0].task_type;
-      if (!inst || inst.taskType !== want) gameState.instances[key] = buildInstanceMatching(def, want);
-    } else if (!inst) {
-      gameState.instances[key] = def.build();
-    }
-  }
-  // challenge tasks: deterministic instances, just make sure they exist
-  for (const key of CHALLENGE_ORDER) {
-    if (!gameState.instances[key]) {
-      const def = CHALLENGE_TASKS[key];
-      gameState.instances[key] = Object.assign({ taskType: def.taskType }, def.build());
-    }
-  }
-
-  // base completion = every required (non-optional) chamber correct
-  const requiredOk = Object.keys(TASKS).every(key => {
-    const def = TASKS[key];
-    if (def.optional) return true;
-    const inst = gameState.instances[key];
-    const rec = inst && gameState.records[def.sceneId + "|" + inst.taskType];
-    return !!(rec && rec.is_correct);
-  });
-  if (requiredOk && !gameState.baseCompleted) {
-    gameState.baseCompleted = true; // per-student session persists this — never a global flag
-  }
-
-  // challenge levels cleared anywhere (cloud or local)
-  for (const key of CHALLENGE_ORDER) {
-    const def = CHALLENGE_TASKS[key];
-    const inst = gameState.instances[key];
-    const rec = inst && gameState.records[def.sceneId + "|" + def.taskType];
-    if (rec && rec.is_correct && !gameState.challengeProgress.includes(key)) {
-      gameState.challengeProgress.push(key);
-    }
-  }
-
-  persistRecords();
-}
-
-$("#btn-name-ok").onclick = async () => {
-  SFX.click();
-  const id = selectedStudentId();
-  if (!id) { $("#name-hint").textContent = "Please choose your grade, class and class number first!"; return; }
-  gameState.studentId = id;
-  // load this student's previously persisted records so Review works across sessions
-  gameState.records = loadVal("ruinsTrialRecords", {})[id] || {};
-  SFX.door();
-  // 1) resume this student's locally saved run (if any)…
-  const resumed = restoreSessionState();
-  // 2) …then merge their cloud records (the data teacher.html shows), so
-  //    progress follows the student to any browser.
-  const cloudTasks = await fetchCloudRecords(id);
-  if (cloudTasks) mergeCloudProgress(cloudTasks);
-  if (!resumed) showMenu();
-};
-
-$("#menu-base").onclick = () => { SFX.click(); startBaseGame(); };
-$("#menu-base-restart").onclick = () => {
-  SFX.click();
-  if (!confirm("Start Over will return to Chapter 1 (your saved records are kept). Continue?")) return;
-  clearRunResume();
-  startBaseGame();
-};
-$("#menu-challenge").onclick = () => {
-  if ($("#menu-challenge").disabled) return;
-  SFX.magic();
-  startChallenge();
-};
-$("#btn-gate-enter").onclick = () => {
-  SFX.magic();
-  const nextKey = CHALLENGE_ORDER.find(key => isChallengeLevelUnlocked(key) && !gameState.challengeTeachProgress.includes(key))
-    || CHALLENGE_ORDER.find(key => isChallengeLevelUnlocked(key) && !gameState.challengeProgress.includes(key))
-    || CHALLENGE_ORDER[0];
-  openChallengeSelection(nextKey, "teach");
-};
-$("#btn-gate-return").onclick = () => { SFX.click(); showMenu(); };
-
-$("#btn-run").onclick = onRun;
-$("#btn-check").onclick = onCheck;
-
-/* Called once Python is ready (worker or fallback). */
-function onPythonReady() {
-  refreshTaskButtons();
-  // Always start from the sign-in tablet; after login the student resumes
-  // their own saved stopping point (see btn-name-ok -> restoreSessionState).
-  show($("#name-panel"));
-  putDecoImage("name-img-box", "doorClosed");
-  $("#hud-scene").textContent = "Prologue · The Ruin Entrance";
-  refreshNameBtn();
-}
-
-/* Safety net: save the resume point when the tab is closed or refreshed. */
-window.addEventListener("beforeunload", () => persistSessionState());
-
-updateConnBadge();
-setBackground("entrance");
-setSprite("priestIdle");
-bootPython();
-</script>
+    if (searchInput) searchInput.addEventListener('input', updateIndex);
+    updateIndex();
+  </script>
 </body>
 </html>
