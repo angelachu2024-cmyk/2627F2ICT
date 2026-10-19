@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Excel Exercise 5 | Charts</title>
+    <style>
+        :root {
+            --ink: #18252c;
+            --muted: #5f6c70;
+            --paper: #f7f3ea;
+            --panel: #fffdf8;
+            --line: #d8d1c3;
+            --teal: #087f78;
+            --teal-dark: #075c58;
+            --coral: #e56b52;
+            --yellow: #f4c95d;
+            --green: #27845d;
+            --shadow: 0 18px 45px rgba(31, 45, 46, .11);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: var(--paper);
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            line-height: 1.55;
+        }
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            opacity: .45;
+            pointer-events: none;
+            background-image: linear-gradient(rgba(8, 127, 120, .05) 1px, transparent 1px), linear-gradient(90deg, rgba(8, 127, 120, .05) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            padding: 15px clamp(18px, 5vw, 76px);
+            color: #fff;
+            background: var(--teal-dark);
+            box-shadow: 0 4px 18px rgba(7, 92, 88, .2);
+        }
+        .brand {
+            font-weight: 800;
+            letter-spacing: .08em;
+            font-size: .82rem;
+            text-transform: uppercase;
+        }
+        .progress-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: .88rem;
+        }
+        progress {
+            width: 150px;
+            height: 8px;
+            accent-color: var(--yellow);
+        }
+        .shell {
+            width: min(1120px, calc(100% - 36px));
+            margin: 0 auto;
+        }
+        .hero {
+            display: grid;
+            grid-template-columns: 1.15fr .85fr;
+            gap: 42px;
+            align-items: center;
+            min-height: 390px;
+            padding: 72px 0 54px;
+        }
+        .eyebrow {
+            color: var(--coral);
+            font-size: .78rem;
+            font-weight: 800;
+            letter-spacing: .15em;
+            text-transform: uppercase;
+        }
+        h1,
+        h2,
+        h3 {
+            font-family: Georgia, serif;
+            line-height: 1.1;
+            margin: 0 0 15px;
+        }
+        h1 {
+            max-width: 650px;
+            font-size: clamp(2.8rem, 6vw, 5.6rem);
+            letter-spacing: -.04em;
+        }
+        h2 {
+            font-size: clamp(2rem, 4vw, 3rem);
+        }
+        h3 {
+            font-size: 1.5rem;
+        }
+        .hero p {
+            max-width: 650px;
+            color: var(--muted);
+            font-size: 1.1rem;
+        }
+        .hero-art {
+            position: relative;
+            min-height: 260px;
+        }
+        .hero-art::before {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            right: 5%;
+            top: 4%;
+            border-radius: 50%;
+            background: var(--yellow);
+        }
+        .hero-art::after {
+            content: "";
+            position: absolute;
+            width: 130px;
+            height: 130px;
+            left: 8%;
+            bottom: 5%;
+            border-radius: 50%;
+            background: var(--coral);
+        }
+        .sheet-mark {
+            position: absolute;
+            z-index: 1;
+            inset: 45px 7% 15px 12%;
+            padding: 20px;
+            border: 2px solid var(--ink);
+            background: var(--panel);
+            box-shadow: 12px 13px 0 var(--teal);
+            transform: rotate(-4deg);
+        }
+        .sheet-mark strong {
+            display: block;
+            margin-bottom: 13px;
+            font: 700 1.25rem Georgia, serif;
+        }
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            border-top: 1px solid var(--line);
+            border-left: 1px solid var(--line);
+        }
+        .mini-grid span {
+            min-height: 28px;
+            padding: 5px;
+            border-right: 1px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            font-size: .7rem;
+        }
+        .mini-grid span:nth-child(-n+5) {
+            background: #d9efeb;
+            font-weight: bold;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 215px 1fr;
+            gap: 42px;
+            align-items: start;
+        }
+        .toc {
+            position: sticky;
+            top: 76px;
+            padding: 20px 0;
+        }
+        .toc h3 {
+            font-size: 1rem;
+            font-family: "Trebuchet MS", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+        }
+        .toc a {
+            display: block;
+            padding: 8px 0 8px 13px;
+            color: var(--muted);
+            border-left: 2px solid var(--line);
+            text-decoration: none;
+            font-size: .9rem;
+        }
+        .toc a:hover,
+        .toc a:focus {
+            color: var(--teal);
+            border-left-color: var(--teal);
+        }
+        .step {
+            scroll-margin-top: 90px;
+            padding: 34px 0 54px;
+            border-top: 1px solid var(--line);
+        }
+        .step-heading {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        .step-number {
+            display: grid;
+            place-items: center;
+            flex: 0 0 42px;
+            width: 42px;
+            height: 42px;
+            color: #fff;
+            background: var(--coral);
+            border-radius: 50%;
+            font-weight: 800;
+        }
+        .step-heading h2 {
+            margin-bottom: 7px;
+        }
+        .step-lead {
+            margin: 0 0 22px;
+            color: var(--muted);
+        }
+        .card {
+            padding: 23px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .88);
+            box-shadow: var(--shadow);
+        }
+        .card+.card {
+            margin-top: 18px;
+        }
+        .action-list {
+            display: grid;
+            gap: 10px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        label.check {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+        }
+        label.check input {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            accent-color: var(--teal);
+        }
+        label.check input:checked+span {
+            color: var(--muted);
+            text-decoration: line-through;
+        }
+        code,
+        .formula {
+            font-family: Consolas, monospace;
+        }
+        code {
+            padding: 2px 6px;
+            color: var(--teal-dark);
+            background: #e1f1ed;
+            border-radius: 4px;
+        }
+        .formula {
+            display: inline-block;
+            padding: 13px 17px;
+            margin: 4px 0;
+            color: #fff;
+            background: var(--teal-dark);
+            border-radius: 5px;
+            font-size: 1.07rem;
+        }
+        .note {
+            border-left: 4px solid var(--yellow);
+            padding: 13px 16px;
+            background: #fff7d9;
+        }
+        .filename {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--coral);
+        }
+        .data-table,
+        .workbook {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data-table {
+            font-size: .86rem;
+        }
+        .data-table th,
+        .data-table td {
+            padding: 8px 7px;
+            text-align: left;
+            border: 1px solid var(--line);
+        }
+        .data-table th {
+            color: #fff;
+            background: var(--teal);
+        }
+        .data-table td:nth-child(2),
+        .data-table td:nth-child(3),
+        .data-table td:nth-child(4) {
+            text-align: right;
+        }
+        .data-table td:nth-child(3) {
+            color: var(--teal-dark);
+        }
+        .workbook-wrap {
+            overflow-x: auto;
+            margin-top: 18px;
+            border: 1px solid #aeb9b5;
+            box-shadow: var(--shadow);
+        }
+        .workbook {
+            min-width: 940px;
+            table-layout: fixed;
+            font-family: Calibri, Arial, sans-serif;
+            font-size: .78rem;
+            background: #fff;
+        }
+        .workbook th,
+        .workbook td {
+            height: 31px;
+            padding: 5px 6px;
+            border: 1px solid #c9d2cf;
+        }
+        .workbook thead th {
+            color: #586c6a;
+            background: #e8efec;
+            text-align: center;
+            font-weight: 400;
+        }
+        .workbook .corner {
+            width: 37px;
+        }
+        .workbook .rowhead {
+            width: 37px;
+            color: #586c6a;
+            background: #e8efec;
+            text-align: center;
+            font-weight: 400;
+        }
+        .workbook .title {
+            font-weight: 700;
+            text-align: center;
+            color: #163b38;
+            background: #e1f1ed;
+        }
+        .workbook .header {
+            text-align: center;
+            font-weight: 700;
+            background: #d3e8e3;
+        }
+        .workbook .currency {
+            text-align: right;
+        }
+        .workbook .percent {
+            color: var(--teal-dark);
+        }
+        .workbook .center {
+            text-align: center;
+        }
+        .workbook .formula-cell {
+            background: #fff4c9;
+            color: #8c5e00;
+        }
+        .workbook .italic {
+            font-style: italic;
+        }
+        .workbook .bold {
+            font-weight: 700;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 14px;
+            margin-top: 13px;
+            color: var(--muted);
+            font-size: .83rem;
+        }
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: 11px;
+            height: 11px;
+            margin-right: 5px;
+            border: 1px solid #c9d2cf;
+            vertical-align: -1px;
+        }
+        .legend .formula-key::before {
+            background: #fff4c9;
+        }
+        .legend .chart-key::before {
+            background: #d9efeb;
+            content: "📊";
+            font-size: 9px;
+            line-height: 11px;
+            text-align: center;
+        }
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            padding: 12px;
+            margin: 15px 0;
+            border: 1px solid #bbc7c3;
+            background: #f2f6f4;
+        }
+        .tool {
+            padding: 7px 10px;
+            color: #405654;
+            border: 1px solid #b8c5c1;
+            border-radius: 4px;
+            background: #fff;
+            font-size: .81rem;
+        }
+        .tool.primary {
+            color: #fff;
+            background: var(--teal);
+            border-color: var(--teal);
+        }
+        .tool.accent {
+            color: #6e5100;
+            background: #ffe9a5;
+            border-color: #e2bd4a;
+        }
+        .tip-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+        .tip {
+            padding: 16px;
+            background: #eef5f1;
+            border-top: 3px solid var(--teal);
+        }
+        .tip strong {
+            display: block;
+            color: var(--teal-dark);
+        }
+        .done {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            margin-top: 24px;
+            padding: 17px;
+            border-top: 1px solid var(--line);
+        }
+        .done-status {
+            color: var(--muted);
+            font-size: .87rem;
+        }
+        .step-complete {
+            border-color: var(--green) !important;
+        }
+        .next-button {
+            padding: 10px 15px;
+            border: 0;
+            color: #fff;
+            background: var(--teal);
+            border-radius: 4px;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 700;
+        }
+        .next-button:hover {
+            background: var(--teal-dark);
+        }
+        .marking {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid var(--line);
+            background: #fff;
+        }
+        .marking th,
+        .marking td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--line);
+        }
+        .marking thead th {
+            background: var(--teal);
+            color: #fff;
+        }
+        .marking tbody tr:nth-child(even) {
+            background: #faf7f0;
+        }
+        .section-block {
+            margin-top: 30px;
+            border: 1px solid var(--line);
+            background: rgba(255, 253, 248, .92);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+        .section-block h2 {
+            font-family: Georgia, serif;
+        }
+        footer {
+            margin-top: 42px;
+            padding: 28px 0 48px;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+            font-size: .86rem;
+            text-align: center;
+        }
+        .pager-nav {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pager-link {
+            text-decoration: none;
+            color: #fff;
+            background: var(--teal-dark);
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            border: 1px solid rgba(7, 92, 88, .3);
+            font-size: .88rem;
+        }
+        .pager-link.home {
+            background: #fff;
+            color: var(--teal-dark);
+            border-color: #b8c5c1;
+        }
+        .chart-preview {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 12px 0;
+        }
+        .chart-box {
+            width: 80px;
+            height: 80px;
+            border: 1px solid var(--line);
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            border-radius: 6px;
+        }
+        .chart-box span {
+            font-size: .6rem;
+            color: var(--muted);
+        }
+        .submit-link {
+            display: block;
+            margin: 12px 0 4px;
+            padding: 12px 14px;
+            border: 1px dashed var(--teal);
+            background: #eef5f1;
+            color: var(--teal-dark);
+            font-family: Consolas, monospace;
+            font-size: .82rem;
+            word-break: break-all;
+            text-decoration: none;
+        }
+        .submit-link:hover {
+            background: #e1f1ed;
+        }
+        @media (max-width: 820px) {
+            .hero {
+                grid-template-columns: 1fr;
+                padding-top: 46px;
+            }
+            .hero-art {
+                min-height: 220px;
+            }
+            .layout {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+            .toc {
+                position: static;
+                display: flex;
+                overflow-x: auto;
+                gap: 15px;
+                padding: 0 0 20px;
+            }
+            .toc h3 {
+                display: none;
+            }
+            .toc a {
+                flex: 0 0 auto;
+                border-left: 0;
+                border-bottom: 2px solid var(--line);
+            }
+            .tip-grid {
+                grid-template-columns: 1fr;
+            }
+            .done {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+            .chart-preview {
+                flex-wrap: wrap;
+            }
+        }
+        @media (max-width: 500px) {
+            .topbar {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 7px;
+            }
+            progress {
+                width: 115px;
+            }
+            .hero-art {
+                min-height: 195px;
+            }
+            .sheet-mark {
+                inset: 26px 2% 12px 7%;
+            }
+            .card {
+                padding: 17px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">Excel practice / Exercise 05</div>
+        <div class="progress-wrap"><span id="progressText">0 of 8 steps complete</span><progress id="progress" value="0" max="8"></progress></div>
+    </header>
+
+    <main class="shell">
+        <section class="hero">
+            <div>
+                <div class="eyebrow">A guided worksheet build</div>
+                <h1>Excel Exercise 5</h1>
+                <p>Naturalists trapped animals on an island, tagged them, released them, then counted the tagged animals in a second catch. Follow the sequence, tick each action as you complete it in Excel, and build a worksheet that estimates each species' population — then present the results with a bar chart, a column chart and an embedded pie chart.</p>
+            </div>
+            <div class="hero-art" aria-hidden="true">
+                <div class="sheet-mark">
+                    <strong>CHARTS DEMO</strong>
+                    <div class="chart-preview">
+                        <div class="chart-box">📊<span>Bar → Chart1</span></div>
+                        <div class="chart-box">📊<span>Column → Chart2</span></div>
+                        <div class="chart-box">🍩<span>Pie (embedded)</span></div>
+                    </div>
+                    <div style="margin-top:6px;font-size:.7rem;color:var(--muted);">Insert → Chart → Move Chart</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="layout">
+            <nav class="toc" aria-label="Guide steps">
+                <h3>Route</h3>
+                <a href="#step-1">01 New sheet &amp; save</a>
+                <a href="#step-2">02 Prepare data</a>
+                <a href="#step-3">03 Compute estimates</a>
+                <a href="#step-4">04 Bar chart (Chart1)</a>
+                <a href="#step-5">05 Column chart (Chart2)</a>
+                <a href="#step-6">06 Embedded pie chart</a>
+                <a href="#step-7">07 Final touches</a>
+                <a href="#step-8">08 Submit</a>
+                <a href="#marking-scheme">09 Marking Scheme</a>
+            </nav>
+
+            <div>
+                <!-- STEP 1 -->
+                <section class="step" id="step-1">
+                    <div class="step-heading"><span class="step-number">01</span><div><h2>Create the Exercise 5 sheet and save</h2><p class="step-lead">Add a new spreadsheet called <strong>Exercise 5</strong> to the same workbook as your previous exercises, then save the file with the new exercise number.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Open the workbook that already contains Exercise 1 – Exercise 4 (or a blank workbook).</span></label>
+                        <label class="check"><input type="checkbox"><span>Click the <strong>+</strong> button to insert a new worksheet.</span></label>
+                        <label class="check"><input type="checkbox"><span>Double-click the new sheet tab and rename it <strong>Exercise 5</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Select <strong>File &gt; Save As</strong> and name the file <span class="filename">Class_Number_Name_ex05</span>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Ensure the suffix is exactly <code>_ex05</code> and keep the <code>.xlsx</code> format.</span></label>
+                    </div></div>
+                    <div class="note"><strong>Example:</strong> <code>F2X_01_YourName_ex05.xlsx</code>. The new sheet must be named exactly <strong>Exercise 5</strong> — the pie chart will be embedded on it later.</div>
+                    <div class="done"><span class="done-status">Sheet "Exercise 5" created and file saved?</span><button class="next-button" data-next="step-2">Next: prepare data</button></div>
+                </section>
+
+                <!-- STEP 2 -->
+                <section class="step" id="step-2">
+                    <div class="step-heading"><span class="step-number">02</span><div><h2>Prepare the data worksheet</h2><p class="step-lead">Create a new spreadsheet and rename it as Exercise 5. On the <strong>Exercise 5</strong> sheet, enter the naturalists' capture–recapture data: species names, first catch, number over median age, second catch and number of tagged animals recaptured.</p><p class="step-lead">Several naturalists are conducting a study of the interrelationships among five animal species on the island. The naturalists trapped animals, determined their ages, tagged the animals, and released them. Later, a second collection of animals was caught and the number of tagged animals was counted. The naturalists then tabulated/charted their data.</p></div></div>
+                    <div class="card">
+                        <h3>Data to enter</h3>
+                        <div class="workbook-wrap">
+                            <table class="workbook">
+                                <thead><tr><th class="corner"></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr></thead>
+                                <tbody>
+                                    <tr><th class="rowhead">1</th><td class="header">Animals</td><td class="header">No. of Animals in First Catch</td><td class="header">No. of Animals Over Median Age</td><td class="header">No. of Animals in Second Catch</td><td class="header">No. of Tagged Animals in Second Catch</td><td class="header">Estimated Population</td><td class="header">Estimated Older Animals</td><td class="header">Percentage of Older Animals</td></tr>
+                                    <tr><th class="rowhead">2</th><td>Moose</td><td class="center">32</td><td class="center">18</td><td class="center">25</td><td class="center">4</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><th class="rowhead">3</th><td>Deer</td><td class="center">326</td><td class="center">146</td><td class="center">95</td><td class="center">24</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><th class="rowhead">4</th><td>Fox</td><td class="center">148</td><td class="center">42</td><td class="center">114</td><td class="center">21</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><th class="rowhead">5</th><td>Wolf</td><td class="center">26</td><td class="center">7</td><td class="center">18</td><td class="center">5</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><th class="rowhead">6</th><td>Otter</td><td class="center">406</td><td class="center">142</td><td class="center">146</td><td class="center">38</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="legend"><span class="formula-key">Columns F, G and H are formulas (Step 3)</span><span>Columns A–E are typed by you</span><span class="chart-key">Values in F–H shown rounded to 1 decimal</span></div>
+                    </div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>In row 1, type the headers: <strong>Animals</strong> (A1), <strong>No. of Animals in First Catch</strong> (B1), <strong>No. of Animals Over Median Age</strong> (C1), <strong>No. of Animals in Second Catch</strong> (D1), <strong>No. of Tagged Animals in Second Catch</strong> (E1).</span></label>
+                        <label class="check"><input type="checkbox"><span>Leave F1, G1 and H1 for now — those headers are typed in Step 3 (or type them now): <strong>Estimated Population</strong>, <strong>Estimated Older Animals</strong>, <strong>Percentage of Older Animals</strong>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Type the species in A2:A6 — Moose, Deer, Fox, Wolf, Otter.</span></label>
+                        <label class="check"><input type="checkbox"><span>Type the first catch counts (32, 326, 148, 26, 406) in B2:B6.</span></label>
+                        <label class="check"><input type="checkbox"><span>Type the animals over median age (18, 146, 42, 7, 142) in C2:C6.</span></label>
+                        <label class="check"><input type="checkbox"><span>Type the second catch counts (25, 95, 114, 18, 146) in D2:D6.</span></label>
+                        <label class="check"><input type="checkbox"><span>Type the tagged animals in the second catch (4, 24, 21, 5, 38) in E2:E6.</span></label>
+                        <label class="check"><input type="checkbox"><span>Apply basic formatting: bold headers, centre B:E, and add borders around the table.</span></label>
+                    </div>
+                        <br>
+                        <img src="images/ex05_img01.png" alt=""></div>
+                    <div class="note"><strong>Typing check:</strong> Double-check all numbers against the brief. At most 5 typing mistakes are allowed in the marking scheme.</div>
+                    <div class="done"><span class="done-status">Data entered on sheet "Exercise 5"?</span><button class="next-button" data-next="step-3">Next: compute estimates</button></div>
+                </section>
+
+                <!-- STEP 3 -->
+                <section class="step" id="step-3">
+                    <div class="step-heading"><span class="step-number">03</span><div><h2>Compute the estimated values</h2><p class="step-lead">Use formulas to work out the estimated population, the estimated number of older animals and the percentage of older animals for each species.</p></div></div>
+                    <div class="card">
+                        <h3>Formulas</h3>
+                        <div class="formula">=B2*D2/E2</div>
+                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">Estimated Population = First Catch × Second Catch ÷ Tagged in Second Catch</div>
+                        <div class="formula">=C2*F2/B2</div>
+                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">Estimated Older Animals = Animals Over Median Age × Estimated Population ÷ First Catch</div>
+                        <div class="formula">=G2/F2</div>
+                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">Percentage of Older Animals = Estimated Older Animals ÷ Estimated Population</div>
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>In cell <code>F2</code>, enter <code>=B2*D2/E2</code> to get the estimated population of the Moose.</span></label>
+                            <label class="check"><input type="checkbox"><span>Drag the fill handle from F2 down to F6 to copy the formula for all five species.</span></label>
+                            <label class="check"><input type="checkbox"><span>In cell <code>G2</code>, enter <code>=C2*F2/B2</code> to get the estimated number of older Moose.</span></label>
+                            <label class="check"><input type="checkbox"><span>Drag the fill handle from G2 down to G6.</span></label>
+                            <label class="check"><input type="checkbox"><span>In cell <code>H2</code>, enter <code>=G2/F2</code> and drag down to H6.</span></label>
+                            <label class="check"><input type="checkbox"><span>Format column H as Percentage with 1 decimal place (e.g., 56.3%).</span></label>
+                            <label class="check"><input type="checkbox"><span>Format columns F and G with 1 decimal place (or leave as General, then set 1 decimal).</span></label>
+                            <label class="check"><input type="checkbox"><span>Verify the results: F = 200.0, 1290.4, 803.4, 93.6, 1559.9 and G = 112.5, 577.9, 228.0, 25.2, 545.6.</span></label>
+                        </div>
+                        <br>
+                        <img src="images/ex05_img02.png" alt="">
+                    </div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Relative references</strong><span>B2, D2, E2 must stay relative (no $ signs) so the fill handle updates each row correctly.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">All three formula columns filled down and formatted?</span><button class="next-button" data-next="step-4">Next: bar chart (Chart1)</button></div>
+                </section>
+
+                <!-- STEP 4 -->
+                <section class="step" id="step-4">
+                    <div class="step-heading"><span class="step-number">04</span><div><h2>Create a bar chart of Estimated Population</h2><p class="step-lead">Select the species and the estimated population, insert a bar chart, and move it to a new chart sheet named <strong>Chart1</strong>.</p></div></div>
+                    <div class="card">
+                        <h3>Steps</h3>
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>Select the range <code>A1:A6</code> (the species, including the header).</span></label>
+                            <label class="check"><input type="checkbox"><span>Hold <strong>Ctrl</strong> and also select <code>F1:F6</code> (Estimated Population, including the header).</span></label>
+                            <label class="check"><input type="checkbox"><span>Go to the <strong>Insert</strong> tab &gt; <strong>Bar Chart</strong> (2-D Clustered Bar).<br><img src="images/ex05_img06.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>With the chart selected, go to <strong>Design</strong> tab &gt; <strong>Move Chart</strong>.<br><img src="images/ex05_img07.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>Choose <strong>New sheet</strong> and type the name <strong>Chart1</strong>, then click OK.<br><img src="images/ex05_img08.png" alt=""></span></label>
+                            <label class="check"><input type="checkbox"><span>Set the chart title to <strong>Estimated Population</strong> (Design &gt; Add Chart Element &gt; Chart Title &gt; Above Chart).</span></label>
+                            <label class="check"><input type="checkbox"><span>Check the category axis shows Otter, Wolf, Fox, Deer and Moose and the value axis runs from 0 to 1800.</span></label>
+                        </div>                        
+                        <br>
+                        <img src="images/ex05_img03.png" alt="">
+                    </div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Bar = horizontal</strong><span>A bar chart draws horizontal bars. Do not use the column chart button by mistake.</span></div>
+                        <div class="tip"><strong>Chart sheet name</strong><span>The tab at the bottom must read exactly <strong>Chart1</strong> — the name counts for marks.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Bar chart on sheet "Chart1" with title "Estimated Population"?</span><button class="next-button" data-next="step-5">Next: column chart (Chart2)</button></div>
+                </section>
+
+                <!-- STEP 5 -->
+                <section class="step" id="step-5">
+                    <div class="step-heading"><span class="step-number">05</span><div><h2>Create a column chart of the two catches</h2><p class="step-lead">Compare the number of animals caught in the first and second catches for each species, and move the chart to a new sheet named <strong>Chart2</strong>.</p></div></div>
+                    <div class="card">
+                        <h3>Steps</h3>
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>Select <code>A1:A6</code>, then hold <strong>Ctrl</strong> and select <code>B1:B6</code> and <code>D1:D6</code> (Species, First Catch, Second Catch).</span></label>
+                            <label class="check"><input type="checkbox"><span>Go to <strong>Insert</strong> &gt; <strong>Column Chart</strong> (2-D Clustered Column).</span></label>
+                            <label class="check"><input type="checkbox"><span>Move the chart to a new sheet named <strong>Chart2</strong> (Design &gt; Move Chart &gt; New sheet).</span></label>
+                            <label class="check"><input type="checkbox"><span>Set the chart title to <strong>No. of Animals Caught in the Two Catches</strong>.</span></label>
+                            <label class="check"><input type="checkbox"><span>Move the legend to the <strong>Bottom</strong> (Add Chart Element &gt; Legend &gt; Bottom).</span></label>
+                            <label class="check"><input type="checkbox"><span>Check the legend labels read <em>No. of Animals in First Catch</em> and <em>No. of Animals in Second Catch</em>.</span></label>
+                            <label class="check"><input type="checkbox"><span>If a third series (Over Median Age or a blank series) appears, remove it with Chart Design &gt; Select Data.</span></label>
+                        </div>
+                        <br>
+                        <img src="images/ex05_img04.png" alt="">
+                    </div>
+                    <div class="note"><strong>Non-adjacent selection:</strong> Hold <strong>Ctrl</strong> while clicking and dragging to select separate ranges. If Ctrl-selection misbehaves, select <code>A1:D6</code> first and then delete the unwanted series (Over Median Age) in <strong>Select Data</strong>.</div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Column vs bar</strong><span>Columns stand vertically; bars lie horizontally. This chart must be a column chart.</span></div>
+                        <div class="tip"><strong>Legend position</strong><span>The finished example places the legend at the bottom, in the order First Catch then Second Catch.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Column chart on "Chart2" with the correct title and legend?</span><button class="next-button" data-next="step-6">Next: embedded pie chart</button></div>
+                </section>
+
+                <!-- STEP 6 -->
+                <section class="step" id="step-6">
+                    <div class="step-heading"><span class="step-number">06</span><div><h2>Create an embedded pie chart of the percentage of older animals</h2><p class="step-lead">This chart stays <strong>on the Exercise 5 sheet</strong> as a floating object — do not move it to a chart sheet. Then change its layout so the labels and legend display clearly.</p></div></div>
+                    <div class="card">
+                        <h3>Steps</h3>
+                        <div class="action-list">
+                            <label class="check"><input type="checkbox"><span>Select <code>A1:A6</code>, then hold <strong>Ctrl</strong> and select <code>H1:H6</code> (Species and Percentage of Older Animals).</span></label>
+                            <label class="check"><input type="checkbox"><span>Go to <strong>Insert</strong> &gt; <strong>Pie Chart</strong> (2-D Pie).</span></label>
+                            <label class="check"><input type="checkbox"><span>Leave the chart <strong>embedded</strong> on the Exercise 5 sheet — do NOT use Move Chart. Drag it below the data table.</span></label>
+                            <label class="check"><input type="checkbox"><span>Set the chart title to <strong>Percentage of Older Animals</strong>.</span></label>
+                            <label class="check"><input type="checkbox"><span>Change the layout: with the chart selected, go to <strong>Chart Design</strong> &gt; <strong>Quick Layout</strong> and choose a layout that shows the data labels and the legend (refer to the finished example).</span></label>
+                            <label class="check"><input type="checkbox"><span>Add data labels: right-click the pie &gt; <strong>Add Data Labels</strong> &gt; <strong>More Options</strong> &gt; tick <strong>Category Name</strong> and <strong>Percentage</strong>.</span></label>
+                            <label class="check"><input type="checkbox"><span>Resize and position the chart neatly so it does not cover the data table or the formula cells.</span></label>
+                        </div>
+                        <br>
+                        <img src="images/ex05_img05.png" alt="">
+                    </div>
+                    <div class="note"><strong>Chart location:</strong> The brief asks for an <strong>embedded</strong> pie chart — it must sit on the <strong>Exercise 5</strong> sheet. A pie chart moved to its own chart sheet loses marks.</div>
+                    <div class="tip-grid">
+                        <div class="tip"><strong>Quick Layout</strong><span>Chart Design &gt; Quick Layout gives ready-made combinations of title, labels and legend — the fastest way to match the example.</span></div>
+                        <div class="tip"><strong>Pie labels</strong><span>If the labels overlap, reduce the font size or choose a layout that shows the legend instead of all category names.</span></div>
+                    </div>
+                    <div class="done"><span class="done-status">Pie chart embedded on "Exercise 5" with the correct layout?</span><button class="next-button" data-next="step-7">Next: final touches</button></div>
+                </section>
+
+                <!-- STEP 7 -->
+                <section class="step" id="step-7">
+                    <div class="step-heading"><span class="step-number">07</span><div><h2>Final touches and verification</h2><p class="step-lead">Check the numbers, chart titles, chart types, sheet names and chart positions before submitting.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Verify the data table is correct and the three formula columns (F, G, H) were filled down to row 6.</span></label>
+                        <label class="check"><input type="checkbox"><span>Verify the <strong>Chart1</strong> sheet exists and shows a <strong>bar chart</strong> titled <em>Estimated Population</em>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Verify the <strong>Chart2</strong> sheet exists and shows a <strong>column chart</strong> titled <em>No. of Animals Caught in the Two Catches</em> with the legend at the bottom.</span></label>
+                        <label class="check"><input type="checkbox"><span>Verify the <strong>pie chart</strong> is still embedded on the <strong>Exercise 5</strong> sheet (not on a chart sheet).</span></label>
+                        <label class="check"><input type="checkbox"><span>Confirm the two chart sheet tabs are named exactly <strong>Chart1</strong> and <strong>Chart2</strong> (case‑sensitive).</span></label>
+                        <label class="check"><input type="checkbox"><span>Change one value in the data table to confirm all three charts update automatically, then undo the change.</span></label>
+                        <label class="check"><input type="checkbox"><span>Check that no chart labels overlap and that every chart title is spelled correctly.</span></label>
+                        <label class="check"><input type="checkbox"><span>Save the file (<strong>Ctrl+S</strong> / <strong>Cmd+S</strong>).</span></label>
+                    </div></div>
+                    <div class="note"><strong>Marking note:</strong> The two chart names and the two chart positions (Chart1, Chart2 plus the embedded pie) account for 10% of the marks — be precise.</div>
+                    <div class="done"><span class="done-status">All charts, names and positions verified?</span><button class="next-button" data-next="step-8">Next: submit</button></div>
+                </section>
+
+                <!-- STEP 8 -->
+                <section class="step" id="step-8">
+                    <div class="step-heading"><span class="step-number">08</span><div><h2>Final review and submit</h2><p class="step-lead">Double‑check everything, save, then upload your workbook to the class OneDrive folder.</p></div></div>
+                    <div class="card"><div class="action-list">
+                        <label class="check"><input type="checkbox"><span>Review all data entries for typing mistakes (max 5 allowed).</span></label>
+                        <label class="check"><input type="checkbox"><span>Check that every formula (<code>=B2*D2/E2</code>, <code>=C2*F2/B2</code>, <code>=G2/F2</code>) is correct and copied down.</span></label>
+                        <label class="check"><input type="checkbox"><span>Confirm the file name is <span class="filename">Class_Number_Name_ex05.xlsx</span>.</span></label>
+                        <label class="check"><input type="checkbox"><span>Save the file one last time (<strong>Ctrl+S</strong> / <strong>Cmd+S</strong>).</span></label>
+                        <label class="check"><input type="checkbox"><span>Upload the file.</span></label>
+                    </div>
+                    </div>
+                    <div class="done"><span class="done-status">All tasks complete! File saved and submitted.</span><button class="next-button" data-next="top">Back to top</button></div>
+                </section>
+
+                <!-- MARKING SCHEME -->
+                <section class="section-block" id="marking-scheme">
+                    <h2>📋 Marking Scheme</h2>
+                    <table class="marking">
+                        <thead><tr><th>Criterion</th><th>Weight</th></tr></thead>
+                        <tbody>
+                            <tr><td>Data entered accurately (at most 5 typing mistakes)</td><td>25% (5% each)</td></tr>
+                            <tr><td>Compute all missing items</td><td>15% (5% per column)</td></tr>
+                            <tr><td>Bar chart of Estimated Population</td><td>15% (5% each)</td></tr>
+                            <tr><td>Column chart of the two catches</td><td>15% (5% each)</td></tr>
+                            <tr><td>Embedded pie chart of Percentage of Older Animals</td><td>15% (5% each)</td></tr>
+                            <tr><td>Correct 2 chart names and 2 chart positions (Chart1, Chart2, embedded pie)</td><td>10% (5% each)</td></tr>
+                            <tr><td>Other mistakes (e.g. borders, bold, alignment, etc.)</td><td>5%</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <footer>&copy; 2026-2027 F2 ICT T1</footer>
+            </div>
+        </div>
+
+        <nav class="pager-nav" aria-label="Page navigation">
+            <a class="pager-link" href="excel-exercise-4-guide.html">Previous: Exercise 04</a>
+            <a class="pager-link home" href="index.html">Index</a>
+            <a class="pager-link" href="excel-exercise-6-guide.html">Next: Exercise 06</a>
+        </nav>
+    </main>
+
+    <script>
+        const steps = [...document.querySelectorAll('.step')];
+        const checks = [...document.querySelectorAll('input[type="checkbox"]')];
+        const progress = document.querySelector('#progress');
+        const progressText = document.querySelector('#progressText');
+
+        function updateProgress() {
+            const complete = steps.filter(step => [...step.querySelectorAll('input[type="checkbox"]')].every(input => input.checked)).length;
+            progress.value = complete;
+            progressText.textContent = `${complete} of ${steps.length} steps complete`;
+            steps.forEach(step => step.classList.toggle('step-complete', [...step.querySelectorAll('input[type="checkbox"]')].length > 0 && [...step.querySelectorAll('input[type="checkbox"]')].every(input => input.checked)));
+            localStorage.setItem('excelGuideChecks_ex05', JSON.stringify(checks.map(input => input.checked)));
+        }
+
+        const saved = JSON.parse(localStorage.getItem('excelGuideChecks_ex05') || '[]');
+        checks.forEach((input, index) => { input.checked = saved[index] === true; input.addEventListener('change', updateProgress); });
+        updateProgress();
+
+        document.querySelectorAll('.next-button').forEach(button => {
+            button.addEventListener('click', () => {
+                const target = button.dataset.next === 'top' ? document.querySelector('.shell') : document.querySelector(`#${button.dataset.next}`);
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+    </script>
+</body>
+</html>
