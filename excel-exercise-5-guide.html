@@ -693,14 +693,14 @@
                         <h3>Data to enter</h3>
                         <div class="workbook-wrap">
                             <table class="workbook">
-                                <thead><tr><th class="corner"></th><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr></thead>
+                                <thead><tr><th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th><th>H</th></tr></thead>
                                 <tbody>
-                                    <tr><th class="rowhead">1</th><td class="header">Animals</td><td class="header">No. of Animals in First Catch</td><td class="header">No. of Animals Over Median Age</td><td class="header">No. of Animals in Second Catch</td><td class="header">No. of Tagged Animals in Second Catch</td><td class="header">Estimated Population</td><td class="header">Estimated Older Animals</td><td class="header">Percentage of Older Animals</td></tr>
-                                    <tr><th class="rowhead">2</th><td>Moose</td><td class="center">32</td><td class="center">18</td><td class="center">25</td><td class="center">4</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
-                                    <tr><th class="rowhead">3</th><td>Deer</td><td class="center">326</td><td class="center">146</td><td class="center">95</td><td class="center">24</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
-                                    <tr><th class="rowhead">4</th><td>Fox</td><td class="center">148</td><td class="center">42</td><td class="center">114</td><td class="center">21</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
-                                    <tr><th class="rowhead">5</th><td>Wolf</td><td class="center">26</td><td class="center">7</td><td class="center">18</td><td class="center">5</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
-                                    <tr><th class="rowhead">6</th><td>Otter</td><td class="center">406</td><td class="center">142</td><td class="center">146</td><td class="center">38</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><td class="header">Animals</td><td class="header">No. of Animals in First Catch</td><td class="header">No. of Animals Over Median Age</td><td class="header">No. of Animals in Second Catch</td><td class="header">No. of Tagged Animals in Second Catch</td><td class="header">Estimated Population</td><td class="header">Estimated Older Animals</td><td class="header">Percentage of Older Animals</td></tr>
+                                    <tr><td>Moose</td><td class="center">32</td><td class="center">18</td><td class="center">25</td><td class="center">4</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><td>Deer</td><td class="center">326</td><td class="center">146</td><td class="center">95</td><td class="center">24</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><td>Fox</td><td class="center">148</td><td class="center">42</td><td class="center">114</td><td class="center">21</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><td>Wolf</td><td class="center">26</td><td class="center">7</td><td class="center">18</td><td class="center">5</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
+                                    <tr><td>Otter</td><td class="center">406</td><td class="center">142</td><td class="center">146</td><td class="center">38</td><td class="center formula-cell"></td><td class="center formula-cell"></td><td class="center percent formula-cell"></td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -727,34 +727,52 @@
                     <div class="step-heading"><span class="step-number">03</span><div><h2>Compute the estimated values</h2><p class="step-lead">Use formulas to work out the estimated population, the estimated number of older animals and the percentage of older animals for each species.</p></div></div>
                     <div class="card">
                         <h3>Formulas</h3>
-                        <div class="formula">=B2*D2/E2</div>
-                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">Estimated Population = First Catch × Second Catch ÷ Tagged in Second Catch</div>
-                        <div class="formula">=C2*F2/B2</div>
-                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">Estimated Older Animals = Animals Over Median Age × Estimated Population ÷ First Catch</div>
-                        <div class="formula">=G2/F2</div>
-                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">Percentage of Older Animals = Estimated Older Animals ÷ Estimated Population</div>
+                            <div style="display: flex; align-items: center; justify-content: flex-start; flex-wrap: nowrap; margin-bottom: 30px;">
+                                <span style="font-weight: bold; margin-right: 10px; white-space: nowrap;">Estimated Population =</span>
+                                <div style="display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; margin: 0 5px;">
+                                    <span style="border-bottom: 2px solid black; padding-bottom: 2px; margin-bottom: 2px; white-space: nowrap; font-weight: bold;">No.of Animals in First Catch &times; No.of Animals in Second Catch</span>
+                                    <span style="padding-top: 2px; white-space: nowrap; font-weight: bold;">No.of Tagged Animals in Second Catch</span>
+                                </div>
+                            </div>
+                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">i.e. =B2*D2/E2</div>
+                        
+                        <div style="display: flex; align-items: center; justify-content: flex-start; flex-wrap: nowrap; margin-bottom: 30px;">
+                            <span style="font-weight: bold; margin-right: 10px; white-space: nowrap;">Estimated Older Animals =</span>
+                            <div style="display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; margin: 0 5px;">
+                                <span style="border-bottom: 2px solid black; padding-bottom: 2px; margin-bottom: 2px; white-space: nowrap; font-weight: bold;">No.of Animals over Median Age</span>
+                                <span style="padding-top: 2px; white-space: nowrap; font-weight: bold;">No.of Animals in First Catch</span>
+                            </div>
+                            <span style="margin: 0 10px; font-size: 20px;">&times;</span>
+                            <span style="font-weight: bold;">Estimated Population</span>
+                        </div>    
+                        
+                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">i.e. =C2/B2*F2</div>
+                        
+                        <div style="display: flex; align-items: center; justify-content: flex-start; flex-wrap: nowrap;">
+                            <span style="font-weight: bold; margin-right: 10px; white-space: nowrap;">Percentage Older Animals =</span>
+                            <div style="display: inline-flex; flex-direction: column; text-align: center; vertical-align: middle; margin: 0 5px;">
+                                <span style="border-bottom: 2px solid black; padding-bottom: 2px; margin-bottom: 2px; white-space: nowrap; font-weight: bold;">Estimated Older Animals</span>
+                                <span style="padding-top: 2px; white-space: nowrap; font-weight: bold;">Sum of Estimated Older Animals</span>
+                            </div>
+                        </div>                
+                       
+                        <div style="margin:6px 0;color:var(--muted);font-size:.9rem;">i.e. =G6/SUM($G$2:$G$6)</div>
                         <div class="action-list">
                             <label class="check"><input type="checkbox"><span>In cell <code>F2</code>, enter <code>=B2*D2/E2</code> to get the estimated population of the Moose.</span></label>
                             <label class="check"><input type="checkbox"><span>Drag the fill handle from F2 down to F6 to copy the formula for all five species.</span></label>
                             <label class="check"><input type="checkbox"><span>In cell <code>G2</code>, enter <code>=C2*F2/B2</code> to get the estimated number of older Moose.</span></label>
                             <label class="check"><input type="checkbox"><span>Drag the fill handle from G2 down to G6.</span></label>
-                            <label class="check"><input type="checkbox"><span>In cell <code>H2</code>, enter <code>=G2/F2</code> and drag down to H6.</span></label>
-                            <label class="check"><input type="checkbox"><span>Format column H as Percentage with 1 decimal place (e.g., 56.3%).</span></label>
-                            <label class="check"><input type="checkbox"><span>Format columns F and G with 1 decimal place (or leave as General, then set 1 decimal).</span></label>
-                            <label class="check"><input type="checkbox"><span>Verify the results: F = 200.0, 1290.4, 803.4, 93.6, 1559.9 and G = 112.5, 577.9, 228.0, 25.2, 545.6.</span></label>
+                            <label class="check"><input type="checkbox"><span>In cell <code>H2</code>, enter <code>=G6/SUM($G$2:$G$6)</code> and drag down to H6.</span></label>
                         </div>
                         <br>
                         <img src="images/ex05_img02.png" alt="">
                     </div>
-                    <div class="tip-grid">
-                        <div class="tip"><strong>Relative references</strong><span>B2, D2, E2 must stay relative (no $ signs) so the fill handle updates each row correctly.</span></div>
-                    </div>
-                    <div class="done"><span class="done-status">All three formula columns filled down and formatted?</span><button class="next-button" data-next="step-4">Next: bar chart (Chart1)</button></div>
+                    <div class="done"><span class="done-status">All three formula columns filled down?</span><button class="next-button" data-next="step-4">Next: bar chart (Chart1)</button></div>
                 </section>
 
                 <!-- STEP 4 -->
                 <section class="step" id="step-4">
-                    <div class="step-heading"><span class="step-number">04</span><div><h2>Create a bar chart of Estimated Population</h2><p class="step-lead">Select the species and the estimated population, insert a bar chart, and move it to a new chart sheet named <strong>Chart1</strong>.</p></div></div>
+                    <div class="step-heading"><span class="step-number">04</span><div><h2>Create a bar chart of Estimated Population</h2><p class="step-lead">Select the species and the estimated population with the five animal species on the island, insert a bar chart, and move it to a new chart sheet named <strong>Chart1</strong>.</p></div></div>
                     <div class="card">
                         <h3>Steps</h3>
                         <div class="action-list">
@@ -786,9 +804,6 @@
                             <label class="check"><input type="checkbox"><span>Go to <strong>Insert</strong> &gt; <strong>Column Chart</strong> (2-D Clustered Column).</span></label>
                             <label class="check"><input type="checkbox"><span>Move the chart to a new sheet named <strong>Chart2</strong> (Design &gt; Move Chart &gt; New sheet).</span></label>
                             <label class="check"><input type="checkbox"><span>Set the chart title to <strong>No. of Animals Caught in the Two Catches</strong>.</span></label>
-                            <label class="check"><input type="checkbox"><span>Move the legend to the <strong>Bottom</strong> (Add Chart Element &gt; Legend &gt; Bottom).</span></label>
-                            <label class="check"><input type="checkbox"><span>Check the legend labels read <em>No. of Animals in First Catch</em> and <em>No. of Animals in Second Catch</em>.</span></label>
-                            <label class="check"><input type="checkbox"><span>If a third series (Over Median Age or a blank series) appears, remove it with Chart Design &gt; Select Data.</span></label>
                         </div>
                         <br>
                         <img src="images/ex05_img04.png" alt="">
@@ -796,7 +811,6 @@
                     <div class="note"><strong>Non-adjacent selection:</strong> Hold <strong>Ctrl</strong> while clicking and dragging to select separate ranges. If Ctrl-selection misbehaves, select <code>A1:D6</code> first and then delete the unwanted series (Over Median Age) in <strong>Select Data</strong>.</div>
                     <div class="tip-grid">
                         <div class="tip"><strong>Column vs bar</strong><span>Columns stand vertically; bars lie horizontally. This chart must be a column chart.</span></div>
-                        <div class="tip"><strong>Legend position</strong><span>The finished example places the legend at the bottom, in the order First Catch then Second Catch.</span></div>
                     </div>
                     <div class="done"><span class="done-status">Column chart on "Chart2" with the correct title and legend?</span><button class="next-button" data-next="step-6">Next: embedded pie chart</button></div>
                 </section>
@@ -812,8 +826,6 @@
                             <label class="check"><input type="checkbox"><span>Leave the chart <strong>embedded</strong> on the Exercise 5 sheet — do NOT use Move Chart. Drag it below the data table.</span></label>
                             <label class="check"><input type="checkbox"><span>Set the chart title to <strong>Percentage of Older Animals</strong>.</span></label>
                             <label class="check"><input type="checkbox"><span>Change the layout: with the chart selected, go to <strong>Chart Design</strong> &gt; <strong>Quick Layout</strong> and choose a layout that shows the data labels and the legend (refer to the finished example).</span></label>
-                            <label class="check"><input type="checkbox"><span>Add data labels: right-click the pie &gt; <strong>Add Data Labels</strong> &gt; <strong>More Options</strong> &gt; tick <strong>Category Name</strong> and <strong>Percentage</strong>.</span></label>
-                            <label class="check"><input type="checkbox"><span>Resize and position the chart neatly so it does not cover the data table or the formula cells.</span></label>
                         </div>
                         <br>
                         <img src="images/ex05_img05.png" alt="">
